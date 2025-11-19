@@ -1363,6 +1363,10 @@ window.addEventListener('load', () => {
     }, 3000); // Wait 3 seconds to see if MQTT connects
     
     // Set up periodic connection monitoring and fallback data loading
+    // Detect mobile device for optimized intervals
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const checkInterval = isMobile ? 60000 : 30000; // 60s on mobile, 30s on desktop
+    
     setInterval(() => {
         // Check if MQTT is connected
         const isMQTTConnected = mqttClient && mqttClient.connected && isConnected;
@@ -1384,5 +1388,5 @@ window.addEventListener('load', () => {
             // MQTT is connected - don't load from Firebase
             console.log('✅ Periodic check: MQTT connected - real-time data active');
         }
-    }, 30000); // Check every 30 seconds
+    }, checkInterval); // Check every 30s on desktop, 60s on mobile
 });

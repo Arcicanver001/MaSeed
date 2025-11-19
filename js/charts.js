@@ -31,6 +31,9 @@ function initializeCharts() {
 
     console.log('🔧 Initializing charts...');
 
+    // Detect mobile device for performance optimizations
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     try {
         tempHumidityChart = new Chart(tempHumidityCanvas, {
     type: 'line',
@@ -55,6 +58,7 @@ function initializeCharts() {
     options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: !isMobile, // Disable animations on mobile for better performance
         interaction: {
             mode: 'index',
             intersect: false,
@@ -111,6 +115,7 @@ function initializeCharts() {
     options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: !isMobile, // Disable animations on mobile for better performance
         scales: {
             y: {
                 ticks: { color: '#a0a0a0' },
@@ -153,6 +158,7 @@ function initializeCharts() {
     options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: !isMobile, // Disable animations on mobile for better performance
         scales: {
             y: {
                 title: {
@@ -200,6 +206,7 @@ function initializeCharts() {
     options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: !isMobile, // Disable animations on mobile for better performance
         scales: {
             y: {
                 title: {
@@ -247,6 +254,7 @@ function initializeCharts() {
     options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: !isMobile, // Disable animations on mobile for better performance
         scales: {
             y: {
                 title: {
@@ -305,6 +313,7 @@ function initializeCharts() {
     options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: !isMobile, // Disable animations on mobile for better performance
         scales: {
             y: {
                 ticks: { color: '#a0a0a0' },

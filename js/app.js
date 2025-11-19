@@ -201,10 +201,15 @@ function initializeHistoryPage() {
     
     updateHistoryCharts(currentHistoryRange);
     
-    // Auto-refresh history charts every 30 seconds to show new data
+    // Auto-refresh history charts - longer interval on mobile for better performance
     if (historyRefreshInterval) {
         clearInterval(historyRefreshInterval);
     }
+    
+    // Detect mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const refreshInterval = isMobile ? 60000 : 30000; // 60s on mobile, 30s on desktop
+    
     historyRefreshInterval = setInterval(() => {
         // Only refresh if we're on the history page (check for 'active' class, not display style)
         const historySection = document.getElementById('history');
@@ -213,9 +218,9 @@ function initializeHistoryPage() {
             console.log(`🔄 Auto-refreshing history charts (range: ${currentHistoryRange})`);
             updateHistoryCharts(currentHistoryRange);
         }
-    }, 30000); // Refresh every 30 seconds
+    }, refreshInterval);
     
-    console.log('✅ History page initialized with auto-refresh (30s interval)');
+    console.log(`✅ History page initialized with auto-refresh (${refreshInterval/1000}s interval${isMobile ? ' - mobile optimized' : ''})`);
 }
 
 function initializeHistoryCharts() {
@@ -412,6 +417,21 @@ async function updateHistoryCharts(range) {
         ]);
 
         const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
+        
+        // Detect mobile device and limit data points for better performance
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const maxDataPoints = isMobile ? 100 : Infinity; // Limit to 100 points on mobile
+        
+        // Limit data points on mobile to improve performance
+        if (isMobile) {
+            sensorData.forEach((data, index) => {
+                if (data.length > maxDataPoints) {
+                    // Keep only the most recent data points
+                    sensorData[index] = data.slice(-maxDataPoints);
+                    console.log(`📱 Mobile: Limited ${sensors[index]} to ${maxDataPoints} most recent points`);
+                }
+            });
+        }
         
         console.log('✅ Loaded data:');
         sensors.forEach((sensor, index) => {
