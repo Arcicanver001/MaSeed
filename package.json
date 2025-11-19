@@ -1,0 +1,27 @@
+{
+  "name": "smart-greenhouse-dashboard",
+  "version": "1.0.0",
+  "description": "Real-time web dashboard for Smart Greenhouse IoT monitoring system",
+  "main": "index.html",
+  "scripts": {
+    "serve:dashboard": "npx -y serve -s . -l 8000",
+    "serve:api": "cd server && node server.js",
+    "start": "npm-run-all --parallel serve:dashboard serve:api"
+  },
+  "keywords": [
+    "iot",
+    "greenhouse",
+    "mqtt",
+    "esp32",
+    "dashboard",
+    "monitoring",
+    "sensors"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  },
+  "dependencies": {}
+}
+

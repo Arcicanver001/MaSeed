@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Smart Greenhouse</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+        }
+
+        .login-card {
+            background: rgba(22, 33, 62, 0.95);
+            border-radius: 15px;
+            padding: 40px 35px;
+            width: min(360px, 90vw);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .login-card h1 {
+            margin: 0 0 10px;
+            text-align: center;
+            font-size: 1.7rem;
+            letter-spacing: 0.5px;
+        }
+
+        .login-card p {
+            text-align: center;
+            font-size: 0.95rem;
+            color: #a5b1c2;
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: #dfe4ea;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(15, 52, 96, 0.6);
+            color: #ffffff;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 18px;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #2ecc71;
+            box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.25);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: none;
+            background: #2ecc71;
+            color: #0f0f0f;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            background: #27ae60;
+            color: #ffffff;
+        }
+
+        .error {
+            color: #ff7675;
+            font-size: 0.85rem;
+            min-height: 20px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .success {
+            color: #2ecc71;
+        }
+
+        .remember-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            font-size: 0.85rem;
+            color: #a5b1c2;
+        }
+
+        .remember-row input[type="checkbox"] {
+            width: auto;
+            margin-right: 6px;
+            accent-color: #2ecc71;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .step {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: #a5b1c2;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: #2ecc71;
+            border-color: #2ecc71;
+            color: #ffffff;
+        }
+
+        .step.completed {
+            background: #27ae60;
+            border-color: #27ae60;
+            color: #ffffff;
+        }
+
+        .form-step {
+            display: none;
+        }
+
+        .form-step.active {
+            display: block;
+        }
+
+        .form-navigation {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .form-navigation button {
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 32px 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1 id="pageTitle">Welcome back</h1>
+        <p id="pageSubtitle">Smart Greenhouse Control Center</p>
+        
+        <!-- Login Form -->
+        <form id="loginForm" autocomplete="on">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="Enter your email" autocomplete="email" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="current-password" required>
+
+            <div class="remember-row">
+                <label style="display:flex; align-items:center; gap:6px;">
+                    <input id="rememberMe" type="checkbox" checked>
+                    Remember me
+                </label>
+                <span id="loginStatus"></span>
+            </div>
+
+            <button type="submit">Log in</button>
+            
+            <div style="text-align: center; margin-top: 16px; font-size: 0.9rem;">
+                <span style="color: #a5b1c2;">Don't have an account? </span>
+                <a href="#" id="showRegister" style="color: #2ecc71; text-decoration: none; font-weight: 600;">Create Account</a>
+            </div>
+        </form>
+
+        <!-- Registration Form (initially hidden) -->
+        <form id="registerForm" autocomplete="on" style="display: none;">
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step active" id="step1Indicator">1</div>
+                <div class="step" id="step2Indicator">2</div>
+            </div>
+
+            <!-- Step 1: Account Details -->
+            <div class="form-step active" id="step1">
+                <h3 style="text-align: center; margin-bottom: 20px; font-size: 1.1rem; color: #dfe4ea;">Account Information</h3>
+                
+                <label for="regEmail">Email</label>
+                <input id="regEmail" name="email" type="email" placeholder="your@email.com" autocomplete="email" required>
+
+                <label for="regPassword">Password</label>
+                <input id="regPassword" name="password" type="password" placeholder="Create a password (min 6 characters)" autocomplete="new-password" required>
+
+                <label for="regConfirmPassword">Confirm Password</label>
+                <input id="regConfirmPassword" name="confirmPassword" type="password" placeholder="Confirm your password" autocomplete="new-password" required>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-secondary" id="backToLogin">Cancel</button>
+                    <button type="button" id="nextToStep2">Next</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Personal Details -->
+            <div class="form-step" id="step2">
+                <h3 style="text-align: center; margin-bottom: 20px; font-size: 1.1rem; color: #dfe4ea;">Personal Information</h3>
+                
+                <label for="regFullName">Name <span style="color: #ff7675;">*</span></label>
+                <input id="regFullName" name="fullName" type="text" placeholder="Your full name" required>
+
+                <label for="regPhone">Contact <span style="color: #ff7675;">*</span></label>
+                <input id="regPhone" name="phone" type="tel" placeholder="+63 9XX XXX XXXX" required>
+
+                <label for="regFarmName">Farm <span style="color: #ff7675;">*</span></label>
+                <input id="regFarmName" name="farmName" type="text" placeholder="Enter farm name" required>
+
+                <label for="regFarmAddress">Address <span style="color: #ff7675;">*</span></label>
+                <input id="regFarmAddress" name="farmAddress" type="text" placeholder="Enter farm address or location" required>
+
+                <label for="regPosition">Position <span style="color: #ff7675;">*</span></label>
+                <select id="regPosition" name="position" required style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 52, 96, 0.6); color: #ffffff; font-size: 1rem; outline: none; transition: border 0.2s ease, box-shadow 0.2s ease; margin-bottom: 18px;">
+                    <option value="">Select position</option>
+                    <option>Owner</option>
+                    <option>Operator</option>
+                    <option>Caretaker</option>
+                    <option>Supervisor</option>
+                    <option>Technician</option>
+                </select>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn-secondary" id="backToStep1">Back</button>
+                    <button type="submit">Create Account</button>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 16px; font-size: 0.9rem;">
+                <span style="color: #a5b1c2;">Already have an account? </span>
+                <a href="#" id="showLogin" style="color: #2ecc71; text-decoration: none; font-weight: 600;">Log in</a>
+            </div>
+        </form>
+        
+        <div id="error" class="error"></div>
+    </div>
+
+    <script>
+        const AUTH_KEY = 'sg_auth_token';
+        const AUTH_EXPIRY_KEY = 'sg_auth_expires';
+        const API_BASE = 'http://localhost:8080/api';
+
+        // If already logged in and token still valid, skip login page
+        async function redirectIfAuthenticated() {
+            const token = localStorage.getItem(AUTH_KEY);
+            const expiry = parseInt(localStorage.getItem(AUTH_EXPIRY_KEY), 10);
+            const now = Date.now();
+
+            if (token && expiry && now < expiry) {
+                // Verify token with backend
+                try {
+                    const response = await fetch(`${API_BASE}/auth/verify`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (response.ok) {
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                } catch (error) {
+                    // Server might be down, allow graceful degradation
+                    console.warn('Could not verify token:', error);
+                }
+            }
+            
+            // Cleanup stale tokens
+            localStorage.removeItem(AUTH_KEY);
+            localStorage.removeItem(AUTH_EXPIRY_KEY);
+        }
+
+        redirectIfAuthenticated();
+
+        // Real-time password confirmation validation
+        const regPassword = document.getElementById('regPassword');
+        const regConfirmPassword = document.getElementById('regConfirmPassword');
+        
+        function validatePasswordMatch() {
+            if (!regPassword || !regConfirmPassword) return;
+            
+            const password = regPassword.value;
+            const confirmPassword = regConfirmPassword.value;
+            
+            if (confirmPassword && password !== confirmPassword) {
+                regConfirmPassword.style.borderColor = '#ff7675';
+            } else if (confirmPassword && password === confirmPassword) {
+                regConfirmPassword.style.borderColor = '#2ecc71';
+            } else {
+                regConfirmPassword.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            }
+        }
+        
+        regPassword?.addEventListener('input', validatePasswordMatch);
+        regConfirmPassword?.addEventListener('input', validatePasswordMatch);
+
+        // Registration form step management
+        let currentStep = 1;
+        const totalSteps = 2;
+
+        function showStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.step').forEach(s => {
+                s.classList.remove('active', 'completed');
+            });
+
+            // Show current step
+            document.getElementById(`step${step}`).classList.add('active');
+            document.getElementById(`step${step}Indicator`).classList.add('active');
+
+            // Mark previous steps as completed
+            for (let i = 1; i < step; i++) {
+                document.getElementById(`step${i}Indicator`).classList.add('completed');
+            }
+
+            currentStep = step;
+        }
+
+        function resetRegistrationForm() {
+            currentStep = 1;
+            document.getElementById('registerForm').reset();
+            showStep(1);
+        }
+
+        // Toggle between login and register forms
+        document.getElementById('showRegister')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'Create Account';
+            document.getElementById('pageSubtitle').textContent = 'Join Smart Greenhouse Control Center';
+            document.getElementById('error').textContent = '';
+            resetRegistrationForm();
+        });
+
+        document.getElementById('showLogin')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'Welcome back';
+            document.getElementById('pageSubtitle').textContent = 'Smart Greenhouse Control Center';
+            document.getElementById('error').textContent = '';
+            resetRegistrationForm();
+        });
+
+        document.getElementById('backToLogin')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'Welcome back';
+            document.getElementById('pageSubtitle').textContent = 'Smart Greenhouse Control Center';
+            document.getElementById('error').textContent = '';
+            resetRegistrationForm();
+        });
+
+        // Step navigation
+        document.getElementById('nextToStep2')?.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+            const confirmPassword = document.getElementById('regConfirmPassword').value.trim();
+            const errorEl = document.getElementById('error');
+
+            // Clear previous errors
+            errorEl.textContent = '';
+            errorEl.classList.remove('success');
+
+            // Validate step 1
+            if (!email || !password || !confirmPassword) {
+                errorEl.textContent = 'Please fill in all account fields.';
+                return;
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                errorEl.textContent = 'Please enter a valid email address.';
+                return;
+            }
+
+            if (password.length < 6) {
+                errorEl.textContent = 'Password must be at least 6 characters.';
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorEl.textContent = 'Passwords do not match.';
+                return;
+            }
+
+            // Check if email already exists
+            try {
+                errorEl.textContent = 'Checking email availability...';
+                const checkResponse = await fetch(`${API_BASE}/auth/check-email`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const checkData = await checkResponse.json();
+
+                if (!checkResponse.ok) {
+                    if (checkResponse.status === 409 || checkData.exists) {
+                        errorEl.textContent = 'This email is already registered. Please use a different email or log in.';
+                        errorEl.classList.remove('success');
+                        return;
+                    }
+                    throw new Error(checkData.error || 'Failed to check email');
+                }
+
+                if (checkData.exists) {
+                    errorEl.textContent = 'This email is already registered. Please use a different email or log in.';
+                    errorEl.classList.remove('success');
+                    return;
+                }
+
+                // Email is available, proceed to step 2
+                errorEl.textContent = '';
+                showStep(2);
+            } catch (error) {
+                console.error('Email check error:', error);
+                errorEl.textContent = 'Could not verify email availability. Please check your connection and try again.';
+                errorEl.classList.remove('success');
+                // Don't proceed if check fails
+            }
+        });
+
+        document.getElementById('backToStep1')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            showStep(1);
+            document.getElementById('error').textContent = '';
+        });
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const email = event.target.email.value.trim();
+            const password = event.target.password.value.trim();
+            const remember = document.getElementById('rememberMe').checked;
+            const errorEl = document.getElementById('error');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter both email and password.';
+                errorEl.classList.remove('success');
+                return;
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                errorEl.textContent = 'Please enter a valid email address.';
+                errorEl.classList.remove('success');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    const expiryTime = Date.now() + data.expiresIn;
+                    localStorage.setItem(AUTH_KEY, data.token);
+                    localStorage.setItem(AUTH_EXPIRY_KEY, String(expiryTime));
+                    errorEl.textContent = '';
+                    errorEl.classList.remove('success');
+                    window.location.href = 'index.html';
+                } else {
+                    errorEl.textContent = data.error || 'Invalid username or password.';
+                    errorEl.classList.remove('success');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorEl.textContent = 'Connection error. Please check if the server is running.';
+                errorEl.classList.remove('success');
+            }
+        });
+
+        // Registration form handler (Step 2 - Final submission)
+        document.getElementById('registerForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            
+            // Get all form values
+            const email = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value.trim();
+            const fullName = document.getElementById('regFullName').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+            const farmName = document.getElementById('regFarmName').value.trim();
+            const farmAddress = document.getElementById('regFarmAddress').value.trim();
+            const position = document.getElementById('regPosition').value;
+            const errorEl = document.getElementById('error');
+
+            // Clear previous errors
+            errorEl.textContent = '';
+            errorEl.classList.remove('success');
+
+            // Re-validate step 1 (in case user went back and changed something)
+            const confirmPassword = document.getElementById('regConfirmPassword').value.trim();
+            if (!email || !password || !confirmPassword) {
+                errorEl.textContent = 'Please complete all account information.';
+                showStep(1);
+                return;
+            }
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                errorEl.textContent = 'Please enter a valid email address.';
+                showStep(1);
+                return;
+            }
+
+            if (password.length < 6) {
+                errorEl.textContent = 'Password must be at least 6 characters.';
+                showStep(1);
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorEl.textContent = 'Passwords do not match.';
+                showStep(1);
+                return;
+            }
+
+            // Validate step 2 - all fields are required
+            if (!fullName || !phone || !farmName || !farmAddress || !position) {
+                errorEl.textContent = 'Please fill in all personal information fields.';
+                showStep(2);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password, fullName, phone, farmName, farmAddress, position })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Auto-login after registration
+                    const expiryTime = Date.now() + data.expiresIn;
+                    localStorage.setItem(AUTH_KEY, data.token);
+                    localStorage.setItem(AUTH_EXPIRY_KEY, String(expiryTime));
+                    errorEl.classList.add('success');
+                    errorEl.textContent = 'Account created! Redirecting...';
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    errorEl.textContent = data.error || 'Registration failed.';
+                    errorEl.classList.remove('success');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                errorEl.textContent = 'Connection error. Please check if the server is running.';
+                errorEl.classList.remove('success');
+            }
+        });
+
+        // Update live status indicator
+        const statusEl = document.getElementById('loginStatus');
+        const timer = setInterval(() => {
+            const expiry = parseInt(localStorage.getItem(AUTH_EXPIRY_KEY), 10);
+            const token = localStorage.getItem(AUTH_KEY);
+
+            if (!token || !expiry) {
+                statusEl.textContent = '';
+                return;
+            }
+
+            const remainingMs = expiry - Date.now();
+            if (remainingMs <= 0) {
+                statusEl.textContent = '';
+                localStorage.removeItem(AUTH_KEY);
+                localStorage.removeItem(AUTH_EXPIRY_KEY);
+                return;
+            }
+
+            const mins = Math.floor(remainingMs / 60000);
+            statusEl.textContent = mins > 60 ? 'Session active' : `Expires in ${mins}m`;
+            statusEl.classList.add('success');
+        }, 60000);
+
+        window.addEventListener('beforeunload', () => clearInterval(timer));
+    </script>
+</body>
+</html>
+

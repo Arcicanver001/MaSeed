@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Settings | BrassiCore Greenhouse</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/mqtt@5.3.0/dist/mqtt.min.js"></script>
+    <style>
+        :root {
+            --primary: #2ecc71;
+            --primary-dark: #1f8f5d;
+            --info: #58b0ff;
+            --danger: #ff7675;
+            --warning: #f5a623;
+            --bg-dark: #0f2642;
+            --bg-darker: #0c1c33;
+            --card-bg: rgba(17, 37, 63, 0.92);
+            --text-light: #ecf4ff;
+            --text-muted: #7f92b2;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #142d4f 55%, var(--bg-darker) 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            gap: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .title {
+            margin: 0;
+            font-size: clamp(1.6rem, 4vw, 2.2rem);
+            letter-spacing: 0.4px;
+        }
+
+        .subtitle {
+            margin: 4px 0 0;
+            font-size: 1rem;
+            color: var(--text-muted);
+        }
+
+        .back-button {
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(46, 204, 113, 0.4);
+            background: linear-gradient(135deg, rgba(31, 46, 71, 0.92), rgba(31, 143, 93, 0.4));
+            color: var(--text-light);
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .back-button:hover,
+        .back-button:focus-visible {
+            transform: translateY(-1px);
+            border-color: rgba(46, 204, 113, 0.6);
+            box-shadow: 0 14px 30px rgba(46, 204, 113, 0.22);
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            border: 1px solid rgba(73, 114, 162, 0.35);
+            box-shadow: 0 24px 45px rgba(8, 14, 26, 0.45);
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .settings-title {
+            margin: 0;
+            font-size: 1.4rem;
+            letter-spacing: 0.3px;
+        }
+
+        .settings-subtitle {
+            margin: 6px 0 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .status-chip {
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(67, 97, 138, 0.45);
+            background: rgba(67, 97, 138, 0.2);
+            color: var(--text-light);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-chip.connected {
+            border-color: rgba(46, 204, 113, 0.5);
+            background: rgba(46, 204, 113, 0.18);
+            color: var(--primary);
+        }
+
+        .settings-divider {
+            height: 1px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 18px;
+        }
+
+        .settings-grid .full-span {
+            grid-column: 1 / -1;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .input-group input,
+        .input-group select {
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(67, 97, 138, 0.35);
+            background: rgba(15, 38, 64, 0.6);
+            color: var(--text-light);
+            font-size: 0.95rem;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .input-group input:focus,
+        .input-group select:focus {
+            outline: none;
+            border-color: rgba(46, 204, 113, 0.6);
+            box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.25);
+        }
+
+        .settings-toggle-list {
+            display: grid;
+            gap: 14px;
+        }
+
+        .settings-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(15, 38, 64, 0.65);
+            border: 1px solid rgba(67, 97, 138, 0.32);
+        }
+
+        .settings-toggle small {
+            display: block;
+            margin-top: 4px;
+            color: var(--text-muted);
+        }
+
+        .settings-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .outline-button {
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(67, 97, 138, 0.45);
+            background: transparent;
+            color: var(--text-light);
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, border 0.2s ease;
+        }
+
+        .outline-button:hover,
+        .outline-button:focus-visible {
+            border-color: rgba(46, 204, 113, 0.6);
+            transform: translateY(-1px);
+        }
+
+        .primary-button {
+            padding: 10px 18px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--bg-darker);
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .primary-button:hover,
+        .primary-button:focus-visible {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 32px rgba(46, 204, 113, 0.25);
+        }
+
+        .connection-alert {
+            padding: 14px 16px;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(67, 97, 138, 0.25);
+            border: 1px solid rgba(67, 97, 138, 0.4);
+        }
+
+        .connection-alert.connected {
+            background: rgba(46, 204, 113, 0.12);
+            border-color: rgba(46, 204, 113, 0.35);
+            color: var(--primary);
+        }
+
+        .connection-alert.disconnected {
+            background: rgba(231, 76, 60, 0.12);
+            border-color: rgba(231, 76, 60, 0.35);
+            color: var(--danger);
+        }
+
+        .connection-alert small {
+            color: var(--text-muted);
+        }
+
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 26px;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(67, 97, 138, 0.6);
+            transition: .3s;
+            border-radius: 999px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 3px;
+            background-color: var(--text-light);
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        .toggle input:checked + .slider {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        }
+
+        .toggle input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-actions {
+                flex-direction: column;
+            }
+
+            .settings-actions button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <header>
+            <div>
+                <h1 class="title">Settings</h1>
+                <p class="subtitle">Manage broker credentials, connection health, and alert preferences.</p>
+            </div>
+            <a href="index.html" class="back-button">← Back to Dashboard</a>
+        </header>
+
+        <div class="card">
+            <div class="settings-header">
+                <div>
+                    <h3 class="settings-title">MQTT Connection Settings</h3>
+                    <p class="settings-subtitle">Manage broker credentials, connection health, and alert preferences.</p>
+                </div>
+                <div class="status-chip" id="mqttStatusChip">Checking connection...</div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-grid">
+                <div class="input-group full-span">
+                    <label for="apiBaseUrl">API Base URL (HTTPS recommended)</label>
+                    <input type="text" id="apiBaseUrl" placeholder="https://your-domain.com/api">
+                </div>
+                <div class="input-group">
+                    <label for="mqttBroker">Broker URL</label>
+                    <input type="text" id="mqttBroker" value="ws://broker.emqx.io:8083/mqtt" placeholder="wss://broker-domain:port/mqtt">
+                </div>
+                <div class="input-group">
+                    <label for="mqttUser">Username (optional)</label>
+                    <input type="text" id="mqttUser" value="myuser" placeholder="Username">
+                </div>
+                <div class="input-group">
+                    <label for="mqttPass">Password (optional)</label>
+                    <input type="password" id="mqttPass" value="*smart2025!" placeholder="Password">
+                </div>
+                <div class="input-group">
+                    <label for="mqttClientId">Client ID (optional)</label>
+                    <input type="text" id="mqttClientId" placeholder="auto-generated if blank">
+                </div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-toggle-list">
+                <div class="settings-toggle">
+                    <div>
+                        Auto reconnect
+                        <small>Attempt to reconnect automatically when the greenhouse loses MQTT connection.</small>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggleAutoReconnect" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="settings-toggle">
+                    <div>
+                        Connection alerts
+                        <small>Send a dashboard notification whenever connection state changes.</small>
+                    </div>
+                    <label class="toggle">
+                        <input type="checkbox" id="toggleConnectionAlerts" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-divider"></div>
+
+            <div class="settings-actions">
+                <button class="outline-button" onclick="checkMQTTStatus()">Check Status</button>
+                <button class="outline-button" onclick="saveMqttSettings()">Save Settings</button>
+                <button class="primary-button" onclick="reconnectMQTT()">Reconnect Broker</button>
+            </div>
+
+            <div id="connectionStatus" class="connection-alert">
+                <span id="statusText">Checking connection...</span>
+                <small id="statusTimestamp">Last checked: --</small>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/mqtt.js"></script>
+    <script>
+        // Load saved settings on page load
+        window.addEventListener('load', () => {
+            const savedBroker = localStorage.getItem('mqttBroker');
+            const savedUser = localStorage.getItem('mqttUser');
+            const savedPass = localStorage.getItem('mqttPass');
+            const savedClientId = localStorage.getItem('mqttClientId');
+            const savedApiBase = localStorage.getItem('apiBaseUrl');
+            const savedAutoReconnect = localStorage.getItem('mqttAutoReconnect');
+            const savedConnectionAlerts = localStorage.getItem('mqttConnectionAlerts');
+
+            if (savedBroker) document.getElementById('mqttBroker').value = savedBroker;
+            if (savedUser) document.getElementById('mqttUser').value = savedUser;
+            if (savedPass) document.getElementById('mqttPass').value = savedPass;
+            if (savedClientId) document.getElementById('mqttClientId').value = savedClientId;
+            if (savedApiBase) document.getElementById('apiBaseUrl').value = savedApiBase;
+            if (savedAutoReconnect !== null) {
+                document.getElementById('toggleAutoReconnect').checked = savedAutoReconnect === '1';
+            }
+            if (savedConnectionAlerts !== null) {
+                document.getElementById('toggleConnectionAlerts').checked = savedConnectionAlerts === '1';
+            }
+
+            // Check status on load
+            setTimeout(() => checkMQTTStatus(), 1000);
+            setInterval(checkMQTTStatus, 5000);
+        });
+
+        // Function to check MQTT connection status
+        function checkMQTTStatus() {
+            const isConnected = window.mqttClient && window.mqttClient.connected;
+            updateConnectionStatus(isConnected);
+            
+            console.log('🔍 MQTT Status Check:');
+            console.log('- Client exists:', !!window.mqttClient);
+            console.log('- Client connected:', isConnected);
+            console.log('- Client state:', window.mqttClient ? window.mqttClient.connectionState : 'No client');
+            
+            return isConnected;
+        }
+
+        // Reconnect to MQTT
+        function reconnectMQTT() {
+            if (window.mqttClient) {
+                window.mqttClient.end();
+            }
+            if (window.connectMQTT) {
+                window.connectMQTT();
+            } else {
+                alert('MQTT connection function not available. Please refresh the page.');
+            }
+        }
+
+        function saveMqttSettings() {
+            const apiInput = document.getElementById('apiBaseUrl');
+            const broker = document.getElementById('mqttBroker').value.trim();
+            const user = document.getElementById('mqttUser').value.trim();
+            const pass = document.getElementById('mqttPass').value;
+            const clientId = document.getElementById('mqttClientId').value.trim();
+            const autoReconnect = document.getElementById('toggleAutoReconnect').checked;
+            const connectionAlerts = document.getElementById('toggleConnectionAlerts').checked;
+
+            let apiBase = apiInput ? apiInput.value.trim() : '';
+            if (apiBase && typeof window.sanitizeApiBase === 'function') {
+                apiBase = window.sanitizeApiBase(apiBase);
+            }
+
+            if (broker && !broker.includes('/mqtt')) {
+                alert('Broker URL should include the /mqtt path (e.g., wss://host:port/mqtt).');
+                return;
+            }
+
+            if (apiBase) {
+                localStorage.setItem('apiBaseUrl', apiBase);
+                if (apiInput) apiInput.value = apiBase;
+            } else {
+                localStorage.removeItem('apiBaseUrl');
+            }
+
+            if (broker) localStorage.setItem('mqttBroker', broker);
+            if (user) localStorage.setItem('mqttUser', user); else localStorage.removeItem('mqttUser');
+            if (pass) localStorage.setItem('mqttPass', pass); else localStorage.removeItem('mqttPass');
+            if (clientId) localStorage.setItem('mqttClientId', clientId); else localStorage.removeItem('mqttClientId');
+
+            localStorage.setItem('mqttAutoReconnect', autoReconnect ? '1' : '0');
+            localStorage.setItem('mqttConnectionAlerts', connectionAlerts ? '1' : '0');
+
+            alert('Connection settings saved. Reconnect to apply changes.');
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('statusText');
+            const connectionDiv = document.getElementById('connectionStatus');
+            const statusChip = document.getElementById('mqttStatusChip');
+            const statusTimestamp = document.getElementById('statusTimestamp');
+            
+            // Update settings panel status
+            if (statusElement) {
+                statusElement.textContent = connected ? '✅ MQTT Connected' : '❌ MQTT Disconnected';
+            }
+            
+            if (connectionDiv) {
+                connectionDiv.classList.toggle('connected', connected);
+                connectionDiv.classList.toggle('disconnected', !connected);
+            }
+
+            if (statusChip) {
+                statusChip.textContent = connected ? '🟢 Connected' : '🔴 Disconnected';
+                statusChip.classList.toggle('connected', connected);
+            }
+
+            if (statusTimestamp) {
+                const now = new Date();
+                statusTimestamp.textContent = `Last checked: ${now.toLocaleString()}`;
+            }
+        }
+
+        // Make functions globally available
+        window.checkMQTTStatus = checkMQTTStatus;
+        window.reconnectMQTT = reconnectMQTT;
+        window.saveMqttSettings = saveMqttSettings;
+        window.updateConnectionStatus = updateConnectionStatus;
+    </script>
+</body>
+</html>
+

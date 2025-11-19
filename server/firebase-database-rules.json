@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "readings": {
+      "$sensor": {
+        ".indexOn": ["ts"],
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
+
