@@ -12,7 +12,7 @@ function sanitizeApiBase(url) {
 function getApiBase() {
     const stored = localStorage.getItem('apiBaseUrl');
     const sanitized = sanitizeApiBase(stored);
-    return sanitized || 'http://localhost:8080/api';
+    return sanitized || 'https://maseed.onrender.com/api';
 }
 
 window.getApiBase = getApiBase;

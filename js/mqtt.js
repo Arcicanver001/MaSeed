@@ -1017,7 +1017,7 @@ async function loadLatestValuesFromFirebase() {
         return;
     }
     
-    const apiBase = window.getApiBase ? window.getApiBase() : 'http://localhost:8080/api';
+    const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.onrender.com/api';
     const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
     const fromMs = Date.now() - (60 * 60 * 1000); // Last hour
     
