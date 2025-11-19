@@ -289,14 +289,14 @@ function connectMQTT() {
     const userInput = document.getElementById('mqttUser');
     const passInput = document.getElementById('mqttPass');
     
-    let broker = brokerInput ? brokerInput.value.trim() : 'ws://broker.emqx.io:8083/mqtt';
+    let broker = brokerInput ? brokerInput.value.trim() : 'wss://broker.emqx.io:8084/mqtt';
     let username = userInput ? userInput.value.trim() : '';
     let password = passInput ? passInput.value : '';
     
     // Use default broker if empty
     if (!broker) {
         console.warn('⚠️ No broker URL provided, using default');
-        const defaultBroker = 'ws://broker.emqx.io:8083/mqtt';
+        const defaultBroker = 'wss://broker.emqx.io:8084/mqtt';
         if (brokerInput) brokerInput.value = defaultBroker;
         broker = defaultBroker;
     }
