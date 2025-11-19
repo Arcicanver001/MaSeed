@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mqtt = require('mqtt');
 const { initializeApp } = require('firebase/app');
-const { getDatabase, ref, push, query, orderByChild, startAt, endAt, get, set, update, remove } = require('firebase/database');
+const { getDatabase, ref, push, query, orderByChild, startAt, endAt, limitToLast, get, set, update, remove } = require('firebase/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const firebaseConfig = require('./firebase-config');
@@ -364,9 +364,28 @@ app.get('/api/history', async (req, res) => {
   try {
     const sensorRef = ref(db, `readings/${sensor}`);
     
+    // Calculate dynamic limit based on time range to prevent excessive bandwidth
+    const timeRange = toMs - fromMs;
+    const hours = timeRange / (60 * 60 * 1000);
+    
+    // Allow more points for longer ranges (assuming ~5 second intervals)
+    let MAX_POINTS;
+    if (hours <= 1) MAX_POINTS = 720;           // 1 hour: 5 sec intervals = 720 points max
+    else if (hours <= 24) MAX_POINTS = 17280;   // 24 hours: 5 sec intervals = 17,280 points max
+    else if (hours <= 168) MAX_POINTS = 120960; // 7 days: 5 sec intervals = 120,960 points max
+    else MAX_POINTS = 518400;                    // 30 days: 5 sec intervals = 518,400 points max
+    
+    console.log(`   📊 Time range: ${hours.toFixed(1)} hours, applying limit: ${MAX_POINTS.toFixed(0)} points max`);
+    
     // Try query with orderByChild first
     try {
-      const sensorQuery = query(sensorRef, orderByChild('ts'), startAt(fromMs), endAt(toMs));
+      const sensorQuery = query(
+        sensorRef, 
+        orderByChild('ts'), 
+        startAt(fromMs), 
+        endAt(toMs),
+        limitToLast(MAX_POINTS) // Limit results to prevent excessive bandwidth
+      );
       const snapshot = await get(sensorQuery);
       const rows = [];
       
@@ -402,39 +421,19 @@ app.get('/api/history', async (req, res) => {
       res.json(rows);
       return;
     } catch (queryError) {
-      console.warn(`⚠️ Query with orderByChild failed, trying without query:`, queryError.message);
+      // CRITICAL: Don't download all data as fallback - this causes massive bandwidth usage
+      // Instead, return an error and log the issue
+      console.error(`❌ Query failed for ${sensor}:`, queryError.message);
+      console.error(`   This usually means Firebase indexes need to be configured.`);
+      console.error(`   Time range: ${new Date(fromMs).toLocaleString()} to ${new Date(toMs).toLocaleString()}`);
       
-      // Fallback: Get all data and filter in memory
-      const snapshot = await get(sensorRef);
-      const rows = [];
-      
-      if (snapshot.exists()) {
-        snapshot.forEach((childSnapshot) => {
-          const data = childSnapshot.val();
-          if (data && typeof data.ts === 'number' && typeof data.value === 'number' && data.ts >= fromMs && data.ts <= toMs) {
-            rows.push({
-              ts: data.ts,
-              value: data.value
-            });
-          }
-        });
-      }
-      
-      // Sort by timestamp ascending
-      rows.sort((a, b) => a.ts - b.ts);
-      
-      if (rows.length > 0) {
-        const oldestTime = new Date(rows[0].ts).toLocaleString();
-        const newestTime = new Date(rows[rows.length-1].ts).toLocaleString();
-        const newestAge = Math.floor((Date.now() - rows[rows.length-1].ts) / 60000); // minutes ago
-        console.log(`✅ Returning ${rows.length} REAL data records for ${sensor} (fallback method)`);
-        console.log(`   Oldest: ${oldestTime}`);
-        console.log(`   Newest: ${newestTime} (${newestAge} minutes ago)`);
-      } else {
-        console.log(`⚠️ No REAL data found for ${sensor} in time range (fallback method)`);
-      }
-      
-      res.json(rows);
+      // Return error instead of downloading entire database
+      res.status(500).json({ 
+        error: 'Query failed. Please ensure Firebase database indexes are configured for timestamp queries.',
+        sensor: sensor,
+        fromMs: fromMs,
+        hint: 'Configure index on /readings/{sensor}/ts in Firebase Console'
+      });
       return;
     }
   } catch (e) {

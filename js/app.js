@@ -211,12 +211,16 @@ function initializeHistoryPage() {
     const refreshInterval = isMobile ? 60000 : 30000; // 60s on mobile, 30s on desktop
     
     historyRefreshInterval = setInterval(() => {
-        // Only refresh if we're on the history page (check for 'active' class, not display style)
+        // Only refresh if we're on the history page AND page is visible (not in background tab)
         const historySection = document.getElementById('history');
         const isHistoryPageActive = historySection && historySection.classList.contains('active');
-        if (isHistoryPageActive) {
+        const isPageVisible = !document.hidden; // Check if page is visible
+        
+        if (isHistoryPageActive && isPageVisible) {
             console.log(`🔄 Auto-refreshing history charts (range: ${currentHistoryRange})`);
             updateHistoryCharts(currentHistoryRange);
+        } else if (isHistoryPageActive && !isPageVisible) {
+            console.log('⏭️ Skipping history refresh - page is in background tab');
         }
     }, refreshInterval);
     

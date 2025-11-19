@@ -1030,10 +1030,18 @@ function showAlert(message, type = 'info') {
 }
 
 // Function to initialize summary stats from historical data
+let summaryStatsInitialized = false; // Cache flag to prevent duplicate initialization
+
 async function initializeSummaryStatsFromHistory() {
+    // Only initialize once per session to prevent excessive bandwidth usage
+    if (summaryStatsInitialized) {
+        console.log('⏭️ Summary stats already initialized, skipping...');
+        return;
+    }
+    
     const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.onrender.com/api';
     const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
-    const fromMs = Date.now() - (24 * 60 * 60 * 1000); // Last 24 hours for proper min/max ranges
+    const fromMs = Date.now() - (2 * 60 * 60 * 1000); // Last 2 hours (reduced from 24h to save bandwidth)
     
     console.log('📊 Initializing summary stats from historical data (last 24 hours)...');
     
@@ -1068,6 +1076,7 @@ async function initializeSummaryStatsFromHistory() {
         
         // Update summary display after initialization
         updateSummaryDisplay();
+        summaryStatsInitialized = true; // Mark as initialized
         console.log('✅ Summary stats initialized from historical data');
     } catch (error) {
         console.error('❌ Error initializing summary stats:', error);
@@ -1085,7 +1094,7 @@ async function loadLatestValuesFromFirebase() {
     
     const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.onrender.com/api';
     const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
-    const fromMs = Date.now() - (60 * 60 * 1000); // Last hour
+    const fromMs = Date.now() - (10 * 60 * 1000); // Last 10 minutes (reduced from 1 hour to save bandwidth)
     
     console.log('📊 Loading latest values from Firebase API (fallback mode)...');
     
