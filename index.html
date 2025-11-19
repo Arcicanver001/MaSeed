@@ -2576,9 +2576,17 @@ body.nav-drawer-open .actuator-card {
                     <div class="summary-item">
                         <div class="summary-icon">🌿</div>
                         <div class="summary-content">
+                            <div class="summary-label">Soil Nutrition Range</div>
+                            <div class="summary-value" id="soilNutritionRange">N: -- to -- P: -- to -- K: -- to --</div>
+                            <div class="summary-status" id="nutrientSummaryStatus">No data</div>
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-icon">📊</div>
+                        <div class="summary-content">
                             <div class="summary-label">Nutrient Status</div>
                             <div class="summary-value" id="nutrientStatus">N: -- P: -- K: --</div>
-                            <div class="summary-status" id="nutrientSummaryStatus">No data</div>
+                            <div class="summary-status" id="nutrientStatusIndicator">No data</div>
                         </div>
                     </div>
                     <div class="summary-item">
@@ -4404,6 +4412,43 @@ body.nav-drawer-open .actuator-card {
     </div>
 
     <script>
+        // Load cached profile immediately (before auth verification) for instant display
+        // This runs after DOM is ready to ensure elements exist
+        function loadCachedProfileImmediately() {
+            const PROFILE_CACHE_KEY = 'sg_cached_profile';
+            const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+            if (cached) {
+                try {
+                    const cachedData = JSON.parse(cached);
+                    const now = Date.now();
+                    const PROFILE_CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+                    if (cachedData.timestamp && (now - cachedData.timestamp) < PROFILE_CACHE_EXPIRY) {
+                        console.log('📦 Loading cached profile immediately');
+                        // updateUserDisplay will be defined later, so we'll call it after DOM ready
+                        setTimeout(() => {
+                            if (typeof updateUserDisplay === 'function') {
+                                updateUserDisplay(
+                                    cachedData.fullName || cachedData.displayName || 'User',
+                                    cachedData.initials || 'U',
+                                    cachedData.photoUrl || null,
+                                    cachedData.email || null
+                                );
+                            }
+                        }, 0);
+                    }
+                } catch (e) {
+                    console.warn('Failed to load cached profile:', e);
+                }
+            }
+        }
+        
+        // Call immediately and also on DOM ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadCachedProfileImmediately);
+        } else {
+            loadCachedProfileImmediately();
+        }
+
         (async function () {
             const AUTH_KEY = 'sg_auth_token';
             const AUTH_EXPIRY_KEY = 'sg_auth_expires';
@@ -4437,14 +4482,14 @@ body.nav-drawer-open .actuator-card {
                 // Token is valid
                 window.SG_AUTH = { AUTH_KEY, AUTH_EXPIRY_KEY };
                 
-                // Load user profile to display name
-                loadUserProfile();
+                // Load user profile to display name (will use cache if available, fetch fresh in background)
+                loadUserProfile(false);
             } catch (error) {
                 console.error('Auth verification error:', error);
                 // Allow access if server is down (graceful degradation)
                 window.SG_AUTH = { AUTH_KEY, AUTH_EXPIRY_KEY };
-                // Still try to load profile
-                loadUserProfile();
+                // Still try to load profile (will use cache if available)
+                loadUserProfile(false);
             }
         })();
 

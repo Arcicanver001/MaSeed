@@ -69,9 +69,52 @@ function updateSummaryDisplay() {
     updateRangeDisplay('soilHumidityRange', summaryStats.soilHumidity.min, summaryStats.soilHumidity.max, '%');
     updateRangeDisplay('soilTempRange', summaryStats.soilTemperature.min, summaryStats.soilTemperature.max, '°C');
     
-    // Update nutrient status
-    const nutrientStatus = `N: ${summaryStats.nitrogen.max || '--'} P: ${summaryStats.phosphorus.max || '--'} K: ${summaryStats.potassium.max || '--'}`;
-    document.getElementById('nutrientStatus').textContent = nutrientStatus;
+    // Update soil nutrition range display
+    const soilNutritionRangeEl = document.getElementById('soilNutritionRange');
+    if (soilNutritionRangeEl) {
+        const nRange = formatNutrientRange(summaryStats.nitrogen.min, summaryStats.nitrogen.max, 'N');
+        const pRange = formatNutrientRange(summaryStats.phosphorus.min, summaryStats.phosphorus.max, 'P');
+        const kRange = formatNutrientRange(summaryStats.potassium.min, summaryStats.potassium.max, 'K');
+        soilNutritionRangeEl.textContent = `${nRange} ${pRange} ${kRange}`;
+    }
+    
+    // Update nutrient status with ranges (min-max format)
+    const nMin = summaryStats.nitrogen.min !== null ? summaryStats.nitrogen.min.toFixed(0) : '--';
+    const nMax = summaryStats.nitrogen.max !== null ? summaryStats.nitrogen.max.toFixed(0) : '--';
+    const pMin = summaryStats.phosphorus.min !== null ? summaryStats.phosphorus.min.toFixed(0) : '--';
+    const pMax = summaryStats.phosphorus.max !== null ? summaryStats.phosphorus.max.toFixed(0) : '--';
+    const kMin = summaryStats.potassium.min !== null ? summaryStats.potassium.min.toFixed(0) : '--';
+    const kMax = summaryStats.potassium.max !== null ? summaryStats.potassium.max.toFixed(0) : '--';
+    
+    let nutrientStatus = '';
+    if (nMin !== '--' && nMax !== '--') {
+        nutrientStatus += `N: ${nMin}-${nMax}`;
+    } else if (nMax !== '--') {
+        nutrientStatus += `N: ${nMax}`;
+    } else {
+        nutrientStatus += `N: --`;
+    }
+    
+    if (pMin !== '--' && pMax !== '--') {
+        nutrientStatus += ` P: ${pMin}-${pMax}`;
+    } else if (pMax !== '--') {
+        nutrientStatus += ` P: ${pMax}`;
+    } else {
+        nutrientStatus += ` P: --`;
+    }
+    
+    if (kMin !== '--' && kMax !== '--') {
+        nutrientStatus += ` K: ${kMin}-${kMax}`;
+    } else if (kMax !== '--') {
+        nutrientStatus += ` K: ${kMax}`;
+    } else {
+        nutrientStatus += ` K: --`;
+    }
+    
+    const nutrientStatusEl = document.getElementById('nutrientStatus');
+    if (nutrientStatusEl) {
+        nutrientStatusEl.textContent = nutrientStatus;
+    }
     
     // Update status indicators
     updateSummaryStatus('tempSummaryStatus', summaryStats.temperature.max, 'temperature');
@@ -92,12 +135,28 @@ function updateSummaryDisplay() {
 // Update range display
 function updateRangeDisplay(elementId, min, max, unit) {
     const element = document.getElementById(elementId);
+    if (!element) return;
     if (min !== null && max !== null) {
         element.textContent = `${min.toFixed(1)}${unit} to ${max.toFixed(1)}${unit}`;
     } else if (min !== null) {
         element.textContent = `${min.toFixed(1)}${unit} to --${unit}`;
     } else if (max !== null) {
         element.textContent = `--${unit} to ${max.toFixed(1)}${unit}`;
+    } else {
+        element.textContent = `--${unit} to --${unit}`;
+    }
+}
+
+// Format nutrient range for display
+function formatNutrientRange(min, max, label) {
+    if (min !== null && max !== null) {
+        return `${label}: ${min.toFixed(0)} to ${max.toFixed(0)}`;
+    } else if (min !== null) {
+        return `${label}: ${min.toFixed(0)} to --`;
+    } else if (max !== null) {
+        return `${label}: -- to ${max.toFixed(0)}`;
+    } else {
+        return `${label}: -- to --`;
     }
 }
 
