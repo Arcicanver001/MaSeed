@@ -78,44 +78,6 @@ function updateSummaryDisplay() {
         soilNutritionRangeEl.textContent = `${nRange} ${pRange} ${kRange}`;
     }
     
-    // Update nutrient status with ranges (min-max format)
-    const nMin = summaryStats.nitrogen.min !== null ? summaryStats.nitrogen.min.toFixed(0) : '--';
-    const nMax = summaryStats.nitrogen.max !== null ? summaryStats.nitrogen.max.toFixed(0) : '--';
-    const pMin = summaryStats.phosphorus.min !== null ? summaryStats.phosphorus.min.toFixed(0) : '--';
-    const pMax = summaryStats.phosphorus.max !== null ? summaryStats.phosphorus.max.toFixed(0) : '--';
-    const kMin = summaryStats.potassium.min !== null ? summaryStats.potassium.min.toFixed(0) : '--';
-    const kMax = summaryStats.potassium.max !== null ? summaryStats.potassium.max.toFixed(0) : '--';
-    
-    let nutrientStatus = '';
-    if (nMin !== '--' && nMax !== '--') {
-        nutrientStatus += `N: ${nMin}-${nMax}`;
-    } else if (nMax !== '--') {
-        nutrientStatus += `N: ${nMax}`;
-    } else {
-        nutrientStatus += `N: --`;
-    }
-    
-    if (pMin !== '--' && pMax !== '--') {
-        nutrientStatus += ` P: ${pMin}-${pMax}`;
-    } else if (pMax !== '--') {
-        nutrientStatus += ` P: ${pMax}`;
-    } else {
-        nutrientStatus += ` P: --`;
-    }
-    
-    if (kMin !== '--' && kMax !== '--') {
-        nutrientStatus += ` K: ${kMin}-${kMax}`;
-    } else if (kMax !== '--') {
-        nutrientStatus += ` K: ${kMax}`;
-    } else {
-        nutrientStatus += ` K: --`;
-    }
-    
-    const nutrientStatusEl = document.getElementById('nutrientStatus');
-    if (nutrientStatusEl) {
-        nutrientStatusEl.textContent = nutrientStatus;
-    }
-    
     // Update status indicators
     updateSummaryStatus('tempSummaryStatus', summaryStats.temperature.max, 'temperature');
     updateSummaryStatus('humiditySummaryStatus', summaryStats.humidity.max, 'humidity');
@@ -1067,6 +1029,51 @@ function showAlert(message, type = 'info') {
     }, 5000);
 }
 
+// Function to initialize summary stats from historical data
+async function initializeSummaryStatsFromHistory() {
+    const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.onrender.com/api';
+    const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
+    const fromMs = Date.now() - (24 * 60 * 60 * 1000); // Last 24 hours for proper min/max ranges
+    
+    console.log('📊 Initializing summary stats from historical data (last 24 hours)...');
+    
+    try {
+        const promises = sensors.map(sensor => 
+            fetch(`${apiBase}/history?sensor=${sensor}&fromMs=${fromMs}`)
+                .then(res => res.ok ? res.json() : [])
+                .catch(() => [])
+        );
+        
+        const results = await Promise.all(promises);
+        
+        // Initialize summary stats from all historical data
+        sensors.forEach((sensor, index) => {
+            const data = results[index];
+            if (data && data.length > 0 && summaryStats[sensor]) {
+                const values = data.map(d => d.value);
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                
+                // Initialize summary stats
+                summaryStats[sensor].min = min;
+                summaryStats[sensor].max = max;
+                // Add values (up to 100 for performance)
+                values.slice(-100).forEach(v => {
+                    summaryStats[sensor].values.push(v);
+                });
+                
+                console.log(`✅ Initialized ${sensor} range: ${min.toFixed(1)} to ${max.toFixed(1)} (${data.length} data points)`);
+            }
+        });
+        
+        // Update summary display after initialization
+        updateSummaryDisplay();
+        console.log('✅ Summary stats initialized from historical data');
+    } catch (error) {
+        console.error('❌ Error initializing summary stats:', error);
+    }
+}
+
 // Function to load latest sensor values from Firebase API as fallback
 // ONLY runs when MQTT is NOT connected
 async function loadLatestValuesFromFirebase() {
@@ -1091,7 +1098,7 @@ async function loadLatestValuesFromFirebase() {
         
         const results = await Promise.all(promises);
         
-        // Get the latest value for each sensor
+        // Get the latest value for each sensor AND initialize summary stats from historical data
         sensors.forEach((sensor, index) => {
             const data = results[index];
             if (data && data.length > 0) {
@@ -1099,11 +1106,38 @@ async function loadLatestValuesFromFirebase() {
                 const latest = data[data.length - 1];
                 const value = latest.value;
                 
+                // Initialize summary stats from all historical data (for min/max ranges)
+                if (data.length > 0) {
+                    const values = data.map(d => d.value);
+                    const min = Math.min(...values);
+                    const max = Math.max(...values);
+                    
+                    // Initialize summary stats if not already set
+                    if (summaryStats[sensor]) {
+                        // Only initialize if we don't have data yet, or if historical data has wider range
+                        if (summaryStats[sensor].min === null || min < summaryStats[sensor].min) {
+                            summaryStats[sensor].min = min;
+                        }
+                        if (summaryStats[sensor].max === null || max > summaryStats[sensor].max) {
+                            summaryStats[sensor].max = max;
+                        }
+                        // Add all values to the values array (up to 100)
+                        values.forEach(v => {
+                            if (summaryStats[sensor].values.length < 100) {
+                                summaryStats[sensor].values.push(v);
+                            }
+                        });
+                    }
+                }
+                
                 // Update the dashboard based on sensor type
                 updateSensorDisplay(sensor, value, latest.ts);
                 console.log(`✅ Loaded ${sensor}: ${value} (Firebase fallback)`);
             }
         });
+        
+        // Update summary display after initializing from historical data
+        updateSummaryDisplay();
         
         console.log('✅ Latest values loaded from Firebase (fallback)');
     } catch (error) {
@@ -1396,6 +1430,9 @@ window.addEventListener('load', () => {
             dashboardPass.value = settingsPass.value;
         }
     }
+    
+    // Initialize summary stats from historical data on page load (for min/max ranges)
+    initializeSummaryStatsFromHistory();
     
     // Auto-connect to MQTT first (real-time data preferred)
     setTimeout(() => {
