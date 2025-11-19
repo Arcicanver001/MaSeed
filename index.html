@@ -4448,8 +4448,14 @@ body.nav-drawer-open .actuator-card {
             }
         })();
 
-        // Load user profile and update UI
-        async function loadUserProfile() {
+        // Cache profile data
+        let cachedProfile = null;
+        let profileLoading = false;
+        const PROFILE_CACHE_KEY = 'sg_cached_profile';
+        const PROFILE_CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+
+        // Load user profile and update UI with caching
+        async function loadUserProfile(forceRefresh = false) {
             const API_BASE = 'https://maseed.onrender.com/api';
             const AUTH_KEY = 'sg_auth_token';
             const token = localStorage.getItem(AUTH_KEY);
@@ -4459,12 +4465,53 @@ body.nav-drawer-open .actuator-card {
                 return;
             }
 
+            // Check cache first (unless forcing refresh)
+            if (!forceRefresh) {
+                const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+                if (cached) {
+                    try {
+                        const cachedData = JSON.parse(cached);
+                        const now = Date.now();
+                        // Use cached data if less than 5 minutes old
+                        if (cachedData.timestamp && (now - cachedData.timestamp) < PROFILE_CACHE_EXPIRY) {
+                            console.log('📦 Using cached profile data');
+                            updateUserDisplay(
+                                cachedData.fullName || cachedData.displayName || 'User',
+                                cachedData.initials || 'U',
+                                cachedData.photoUrl || null,
+                                cachedData.email || null
+                            );
+                            cachedProfile = cachedData;
+                            
+                            // Still fetch fresh data in background
+                            fetchFreshProfile(API_BASE, token);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to parse cached profile:', e);
+                    }
+                }
+            }
+
+            // No cache or expired, fetch fresh data
+            await fetchFreshProfile(API_BASE, token);
+        }
+
+        async function fetchFreshProfile(API_BASE, token) {
+            // Prevent multiple simultaneous requests
+            if (profileLoading) {
+                console.log('⏳ Profile already loading, skipping...');
+                return;
+            }
+            
+            profileLoading = true;
+            
             try {
                 const response = await fetch(`${API_BASE}/auth/profile`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     },
-                    cache: 'no-cache' // Always fetch fresh data
+                    cache: 'no-cache'
                 });
 
                 if (response.ok) {
@@ -4477,13 +4524,34 @@ body.nav-drawer-open .actuator-card {
                         .join('')
                         .substring(0, 2)
                         .toUpperCase();
+                    
+                    // Update display
                     updateUserDisplay(displayName, initials, profile.photoUrl, profile.email);
+                    
+                    // Cache the profile data
+                    const cacheData = {
+                        fullName: profile.fullName,
+                        displayName: profile.displayName,
+                        email: profile.email,
+                        photoUrl: profile.photoUrl,
+                        initials: initials,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cacheData));
+                    cachedProfile = cacheData;
+                    
+                    console.log('✅ Profile loaded and cached');
                 } else {
                     updateUserDisplay('User', 'U', null, null);
                 }
             } catch (error) {
                 console.error('Error loading user profile:', error);
-                updateUserDisplay('User', 'U', null, null);
+                // Don't update display on error if we have cached data
+                if (!cachedProfile) {
+                    updateUserDisplay('User', 'U', null, null);
+                }
+            } finally {
+                profileLoading = false;
             }
         }
 
@@ -4557,24 +4625,33 @@ body.nav-drawer-open .actuator-card {
             avatarEl.appendChild(textEl);
         }
 
-        // Refresh user profile when page becomes visible (e.g., returning from profile page)
+        // Debounce profile loading to prevent multiple rapid calls
+        let profileRefreshTimeout = null;
+        function debouncedLoadProfile(forceRefresh = false) {
+            if (profileRefreshTimeout) {
+                clearTimeout(profileRefreshTimeout);
+            }
+            profileRefreshTimeout = setTimeout(() => {
+                loadUserProfile(forceRefresh);
+            }, 300); // Wait 300ms before loading
+        }
+
+        // Refresh user profile when page becomes visible (debounced)
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
-                // Page became visible, refresh user profile
-                loadUserProfile();
+                debouncedLoadProfile(false); // Use cache if available
             }
         });
 
-        // Also refresh when window gains focus (alternative trigger)
+        // Also refresh when window gains focus (debounced)
         window.addEventListener('focus', function() {
-            loadUserProfile();
+            debouncedLoadProfile(false); // Use cache if available
         });
 
         // Listen for profile updates from other tabs/windows
         window.addEventListener('storage', function(e) {
             if (e.key === 'sg_profile_updated') {
-                // Profile was updated in another tab, refresh
-                loadUserProfile();
+                debouncedLoadProfile(true); // Force refresh on update
             }
         });
 
@@ -4582,8 +4659,9 @@ body.nav-drawer-open .actuator-card {
         window.addEventListener('load', function() {
             const lastUpdate = localStorage.getItem('sg_profile_updated');
             if (lastUpdate) {
-                // Profile was recently updated, refresh
-                loadUserProfile();
+                debouncedLoadProfile(true); // Force refresh if updated
+            } else {
+                loadUserProfile(false); // Use cache on initial load
             }
         });
 
@@ -4614,18 +4692,26 @@ body.nav-drawer-open .actuator-card {
 
         function openNavDrawer() {
             if (!navDrawer || !navBackdrop) return;
-            navDrawer.classList.add('open');
-            navDrawer.setAttribute('aria-hidden', 'false');
-            navBackdrop.classList.add('active');
-            navBackdrop.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('nav-drawer-open');
-            if (menuToggleButton) {
-                menuToggleButton.setAttribute('aria-expanded', 'true');
-            }
-            const firstLink = navDrawer.querySelector('.nav-link');
-            if (firstLink) {
-                firstLink.focus();
-            }
+            
+            // Use requestAnimationFrame for smooth animation
+            requestAnimationFrame(() => {
+                navDrawer.classList.add('open');
+                navDrawer.setAttribute('aria-hidden', 'false');
+                navBackdrop.classList.add('active');
+                navBackdrop.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('nav-drawer-open');
+                if (menuToggleButton) {
+                    menuToggleButton.setAttribute('aria-expanded', 'true');
+                }
+                
+                // Defer focus to avoid blocking animation
+                requestAnimationFrame(() => {
+                    const firstLink = navDrawer.querySelector('.nav-link');
+                    if (firstLink) {
+                        firstLink.focus();
+                    }
+                });
+            });
         }
 
         function closeNavDrawer() {
