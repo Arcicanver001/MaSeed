@@ -595,46 +595,72 @@ async function updateHistoryCharts(range) {
 }
 
 // Export Modal Functions
-function showExportModal() {
-    const modal = document.getElementById('exportModal');
-    modal.style.display = 'block';
-    
-    // Set default dates (last 7 days)
-    const today = new Date();
-    const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    document.getElementById('exportStartDate').value = lastWeek.toISOString().split('T')[0];
-    document.getElementById('exportEndDate').value = today.toISOString().split('T')[0];
-}
-
-function hideExportModal() {
-    const modal = document.getElementById('exportModal');
-    modal.style.display = 'none';
-}
+// showExportModal and hideExportModal are defined in index.html
+// They use the correct CSS class-based approach (.visible) instead of display
 
 // Data Export Functions
 async function exportData() {
-    const format = document.getElementById('exportFormat').value;
-    const startDate = document.getElementById('exportStartDate').value;
-    const endDate = document.getElementById('exportEndDate').value;
-    
-    if (!startDate || !endDate) {
-        alert('Please select both start and end dates');
-        return;
+    try {
+        const format = document.getElementById('exportFormat').value;
+        const startDate = document.getElementById('exportStartDate').value;
+        const endDate = document.getElementById('exportEndDate').value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+        
+        // Show loading indicator
+        const exportBtn = event?.target || document.querySelector('button[onclick*="exportData()"]');
+        const originalText = exportBtn?.textContent;
+        if (exportBtn) {
+            exportBtn.disabled = true;
+            exportBtn.textContent = 'Exporting...';
+        }
+        
+        const exportDataset = await buildExportDataset(startDate, endDate);
+        if (!exportDataset) {
+            if (exportBtn) {
+                exportBtn.disabled = false;
+                exportBtn.textContent = originalText || 'Export Data';
+            }
+            return;
+        }
+        
+        if (format === 'csv') {
+            exportToCSV(exportDataset);
+        } else if (format === 'pdf') {
+            if (!window.jspdf) {
+                alert('PDF library is still loading. Please wait a moment and try again.');
+                if (exportBtn) {
+                    exportBtn.disabled = false;
+                    exportBtn.textContent = originalText || 'Export Data';
+                }
+                return;
+            }
+            exportToPDF(exportDataset);
+        }
+        
+        // Hide modal after export
+        hideExportModal();
+        
+        if (exportBtn) {
+            exportBtn.disabled = false;
+            exportBtn.textContent = originalText || 'Export Data';
+        }
+    } catch (error) {
+        console.error('❌ Export error:', error);
+        alert('Failed to export data: ' + error.message);
+        const exportBtn = document.querySelector('button[onclick*="exportData()"]');
+        if (exportBtn) {
+            exportBtn.disabled = false;
+            exportBtn.textContent = 'Export Data';
+        }
     }
-    
-    const exportDataset = await buildExportDataset(startDate, endDate);
-    if (!exportDataset) return;
-    
-    if (format === 'csv') {
-        exportToCSV(exportDataset);
-    } else if (format === 'pdf') {
-        exportToPDF(exportDataset);
-    }
-    
-    // Hide modal after export
-    hideExportModal();
 }
+
+// Make exportData globally accessible for onclick handlers
+window.exportData = exportData;
 
 async function buildExportDataset(startDate, endDate) {
     const start = new Date(startDate);
@@ -859,11 +885,17 @@ function exportToJSON(data) {
 }
 
 function exportToPDF(data) {
-    const { metadata, rows } = data;
+    if (!window.jspdf) {
+        alert('PDF library is not loaded. Please refresh the page and try again.');
+        return;
+    }
     
-    // Initialize jsPDF
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('landscape', 'mm', 'a4'); // Landscape for wider tables
+    try {
+        const { metadata, rows } = data;
+        
+        // Initialize jsPDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'mm', 'a4'); // Landscape for wider tables
     
     // Colors
     const primaryColor = [46, 125, 50]; // Green
@@ -1215,6 +1247,10 @@ function exportToPDF(data) {
     // ========== SAVE PDF ==========
     const filename = `greenhouse-report-${metadata.startLabel.replace(/\//g, '-').replace(/:/g, '-')}-to-${metadata.endLabel.replace(/\//g, '-').replace(/:/g, '-')}.pdf`;
     doc.save(filename);
+    } catch (error) {
+        console.error('❌ PDF export error:', error);
+        alert('Failed to generate PDF: ' + error.message);
+    }
 }
 
 function downloadFile(content, filename, mimeType) {
