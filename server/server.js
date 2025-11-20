@@ -29,7 +29,8 @@ if (compression) {
       if (req.headers['x-no-compression']) {
         return false;
       }
-      return compression.filter(req, res);
+      // Use the default compression filter
+      return compression.filter ? compression.filter(req, res) : true;
     }
   }));
   console.log('✅ Compression middleware enabled');
@@ -1059,14 +1060,20 @@ app.options('*', (req, res) => {
 // Error handler - ensures CORS headers are ALWAYS sent, even on errors
 app.use((err, req, res, next) => {
   console.error('❌ Server error:', err);
-  setCORSHeaders(req, res);
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Internal server error' 
-  });
+  
+  // Only set headers if they haven't been sent yet
+  if (!res.headersSent) {
+    setCORSHeaders(req, res);
+    res.status(err.status || 500).json({ 
+      error: err.message || 'Internal server error' 
+    });
+  } else {
+    next(err);
+  }
 });
 
-// 404 handler - also with CORS headers
-app.use((req, res) => {
+// 404 handler - also with CORS headers (must be last, after all routes)
+app.use((req, res, next) => {
   setCORSHeaders(req, res);
   res.status(404).json({ error: 'Endpoint not found' });
 });
