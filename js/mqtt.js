@@ -1043,22 +1043,30 @@ async function initializeSummaryStatsFromHistory() {
     const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
     const fromMs = Date.now() - (2 * 60 * 60 * 1000); // Last 2 hours (reduced from 24h to save bandwidth)
     
-    console.log('📊 Initializing summary stats from historical data (last 24 hours)...');
+    console.log('📊 Initializing summary stats from historical data (last 2 hours)...');
     
     try {
-        const promises = sensors.map(sensor => 
-            fetch(`${apiBase}/history?sensor=${sensor}&fromMs=${fromMs}`)
-                .then(res => res.ok ? res.json() : [])
-                .catch(() => [])
-        );
+        // Use batch endpoint - ONE request instead of 9 (89% reduction in requests)
+        const url = `${apiBase}/history/batch?sensors=${sensors.join(',')}&fromMs=${fromMs}`;
+        const response = await fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-Encoding': 'gzip, deflate, br' // Request compression
+            }
+        });
         
-        const results = await Promise.all(promises);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
         
-        // Initialize summary stats from all historical data
-        sensors.forEach((sensor, index) => {
-            const data = results[index];
-            if (data && data.length > 0 && summaryStats[sensor]) {
-                const values = data.map(d => d.value);
+        const data = await response.json();
+        
+        // Process batch response (handles both {ts, v} and {ts, value} formats)
+        sensors.forEach(sensor => {
+            const sensorData = data[sensor] || [];
+            if (sensorData.length > 0 && summaryStats[sensor]) {
+                // Handle compressed format: {ts, v} or {ts, value}
+                const values = sensorData.map(d => d.v !== undefined ? d.v : d.value);
                 const min = Math.min(...values);
                 const max = Math.max(...values);
                 
@@ -1070,14 +1078,14 @@ async function initializeSummaryStatsFromHistory() {
                     summaryStats[sensor].values.push(v);
                 });
                 
-                console.log(`✅ Initialized ${sensor} range: ${min.toFixed(1)} to ${max.toFixed(1)} (${data.length} data points)`);
+                console.log(`✅ Initialized ${sensor} range: ${min.toFixed(1)} to ${max.toFixed(1)} (${sensorData.length} data points)`);
             }
         });
         
         // Update summary display after initialization
         updateSummaryDisplay();
         summaryStatsInitialized = true; // Mark as initialized
-        console.log('✅ Summary stats initialized from historical data');
+        console.log('✅ Summary stats initialized from batch API');
     } catch (error) {
         console.error('❌ Error initializing summary stats:', error);
     }

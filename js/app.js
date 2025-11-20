@@ -338,7 +338,11 @@ async function fetchHistory(sensor, fromMs) {
             return []; // Return empty array on error
         }
         const data = await res.json();
-        return Array.isArray(data) ? data : []; // Ensure it's an array
+        // Handle compressed format: {ts, v} or {ts, value}
+        return Array.isArray(data) ? data.map(d => ({
+            ts: d.ts,
+            value: d.v !== undefined ? d.v : d.value
+        })) : []; // Ensure it's an array with consistent format
     } catch (error) {
         console.error(`❌ Error fetching ${sensor} history:`, error);
         console.error(`URL was: ${url}`);
