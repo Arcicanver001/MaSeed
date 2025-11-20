@@ -1051,11 +1051,8 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
 
 // ==================== END AUTHENTICATION ENDPOINTS ====================
 
-// Handle preflight OPTIONS requests (CORS)
-app.options('*', (req, res) => {
-  setCORSHeaders(req, res);
-  res.sendStatus(200);
-});
+// Note: CORS middleware already handles OPTIONS preflight requests automatically
+// No need for explicit app.options('*') handler (Express 5 doesn't support wildcard in options)
 
 // 404 handler - must come before error handler (catches unmatched routes)
 app.use((req, res) => {
