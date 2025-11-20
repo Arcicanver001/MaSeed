@@ -1057,7 +1057,13 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// Error handler - ensures CORS headers are ALWAYS sent, even on errors
+// 404 handler - must come before error handler (catches unmatched routes)
+app.use((req, res) => {
+  setCORSHeaders(req, res);
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
+// Error handler - must be last (catches errors passed to next(err))
 app.use((err, req, res, next) => {
   console.error('❌ Server error:', err);
   
@@ -1068,14 +1074,9 @@ app.use((err, req, res, next) => {
       error: err.message || 'Internal server error' 
     });
   } else {
+    // Headers already sent, can't send response
     next(err);
   }
-});
-
-// 404 handler - also with CORS headers (must be last, after all routes)
-app.use((req, res, next) => {
-  setCORSHeaders(req, res);
-  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 const port = parseInt(process.env.PORT || '8080', 10);
