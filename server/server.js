@@ -8,23 +8,34 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const firebaseConfig = require('./firebase-config');
 
-const compression = require('compression');
+// Make compression optional (in case it's not installed on server)
+let compression;
+try {
+  compression = require('compression');
+} catch (e) {
+  console.warn('⚠️ Compression module not available, continuing without compression');
+}
 
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 
-// Add compression middleware - reduces bandwidth by 70-90%
-app.use(compression({
+// Add compression middleware - reduces bandwidth by 70-90% (optional)
+if (compression) {
+  app.use(compression({
     level: 6, // Balance between CPU and compression (1-9, 6 is optimal)
     threshold: 1024, // Only compress responses > 1KB
     filter: (req, res) => {
-        // Compress all JSON responses
-        if (req.headers['x-no-compression']) {
-            return false;
-        }
-        return compression.filter(req, res);
+      // Compress all JSON responses
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
+      return compression.filter(req, res);
     }
-}));
+  }));
+  console.log('✅ Compression middleware enabled');
+} else {
+  console.log('⚠️ Compression middleware disabled (module not available)');
+}
 
 app.use(express.json({ limit: '10mb' })); // Parse JSON request bodies (increased limit for base64 images)
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -44,6 +55,19 @@ app.use((req, res, next) => {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getDatabase(firebaseApp);
 console.log('✅ Firebase initialized');
+
+// Helper function to set CORS headers (ensures headers are always sent)
+function setCORSHeaders(req, res) {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+}
 
 // MQTT subscription and ingestion
 // IMPORTANT: Arduino publishes to greenhouse/temperature, greenhouse/humidity, etc. (NOT greenhouse/cedrick1/*)
@@ -383,6 +407,7 @@ app.get('/api/latest', async (req, res) => {
     res.json(latestData);
   } catch (e) {
     console.error('❌ Error fetching latest data:', e.message);
+    setCORSHeaders(req, res);
     res.status(500).json({ error: e.message });
   }
 });
@@ -507,6 +532,7 @@ app.get('/api/history', async (req, res) => {
   } catch (e) {
     console.error('❌ Firebase read error:', e.message);
     console.error('Stack:', e.stack);
+    setCORSHeaders(req, res);
     res.status(500).json({ error: e.message, sensor: sensor, fromMs: fromMs });
   }
 });
@@ -553,6 +579,7 @@ app.get('/api/history/batch', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error('❌ Batch history error:', error);
+    setCORSHeaders(req, res);
     res.status(500).json({ error: error.message });
   }
 });
@@ -636,6 +663,7 @@ app.get('/api/actuators/history', async (req, res) => {
     res.json(rows);
   } catch (e) {
     console.error(`❌ Firebase actuator read error for ${actuator}:`, e.message);
+    setCORSHeaders(req, res);
     res.status(500).json({ error: e.message, actuator, fromMs });
   }
 });
@@ -868,6 +896,7 @@ app.get('/api/auth/profile', authenticateToken, async (req, res) => {
     res.json(userData);
   } catch (error) {
     console.error('Get profile error:', error);
+    setCORSHeaders(req, res);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1020,6 +1049,27 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
 });
 
 // ==================== END AUTHENTICATION ENDPOINTS ====================
+
+// Handle preflight OPTIONS requests (CORS)
+app.options('*', (req, res) => {
+  setCORSHeaders(req, res);
+  res.sendStatus(200);
+});
+
+// Error handler - ensures CORS headers are ALWAYS sent, even on errors
+app.use((err, req, res, next) => {
+  console.error('❌ Server error:', err);
+  setCORSHeaders(req, res);
+  res.status(err.status || 500).json({ 
+    error: err.message || 'Internal server error' 
+  });
+});
+
+// 404 handler - also with CORS headers
+app.use((req, res) => {
+  setCORSHeaders(req, res);
+  res.status(404).json({ error: 'Endpoint not found' });
+});
 
 const port = parseInt(process.env.PORT || '8080', 10);
 app.listen(port, () => {
