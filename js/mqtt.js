@@ -1448,8 +1448,11 @@ window.addEventListener('load', () => {
         }
     }
     
-    // Initialize summary stats from historical data on page load (for min/max ranges)
-    initializeSummaryStatsFromHistory();
+    // Defer summary stats initialization - don't block page load
+    // Load after 2 seconds so page is already visible and interactive
+    setTimeout(() => {
+        initializeSummaryStatsFromHistory();
+    }, 2000);
     
     // Auto-connect to MQTT first (real-time data preferred)
     setTimeout(() => {
