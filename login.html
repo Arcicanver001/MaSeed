@@ -25,8 +25,12 @@
             border-radius: 15px;
             padding: 40px 35px;
             width: min(360px, 90vw);
+            max-width: 100%;
             box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
             border: 1px solid rgba(255, 255, 255, 0.08);
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
         }
 
         .login-card h1 {
@@ -61,6 +65,25 @@
             outline: none;
             transition: border 0.2s ease, box-shadow 0.2s ease;
             margin-bottom: 18px;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(15, 52, 96, 0.6);
+            color: #ffffff;
+            font-size: 1rem;
+            outline: none;
+            transition: border 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 18px;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
         }
 
         input:focus,
@@ -80,6 +103,9 @@
             font-size: 1rem;
             cursor: pointer;
             transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            -moz-box-sizing: border-box;
         }
 
         button:hover {
@@ -178,16 +204,89 @@
             border-color: rgba(255, 255, 255, 0.3);
         }
 
+        /* Loading Animation */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(46, 204, 113, 0.2);
+            border-top: 4px solid #2ecc71;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            color: #2ecc71;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-align: center;
+            animation: pulse 1.5s ease infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
         @media (max-width: 480px) {
             .login-card {
-                padding: 32px 25px;
+                padding: 32px 20px;
+                width: min(360px, calc(100vw - 20px));
+                margin: 10px;
             }
+            
+            input, button, select {
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+                -webkit-box-sizing: border-box;
+                -moz-box-sizing: border-box;
+            }
+            
+            form {
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+
         }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <h1 id="pageTitle">Welcome back</h1>
+        <h1 id="pageTitle">Welcome</h1>
         <p id="pageSubtitle">Smart Greenhouse Control Center</p>
         
         <!-- Login Form -->
@@ -258,7 +357,7 @@
                 <input id="regFarmAddress" name="farmAddress" type="text" placeholder="Enter farm address or location" required>
 
                 <label for="regPosition">Position <span style="color: #ff7675;">*</span></label>
-                <select id="regPosition" name="position" required style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 52, 96, 0.6); color: #ffffff; font-size: 1rem; outline: none; transition: border 0.2s ease, box-shadow 0.2s ease; margin-bottom: 18px;">
+                <select id="regPosition" name="position" required style="width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.15); background: rgba(15, 52, 96, 0.6); color: #ffffff; font-size: 1rem; outline: none; transition: border 0.2s ease, box-shadow 0.2s ease; margin-bottom: 18px; box-sizing: border-box; -webkit-box-sizing: border-box; -moz-box-sizing: border-box;">
                     <option value="">Select position</option>
                     <option>Owner</option>
                     <option>Operator</option>
@@ -282,10 +381,16 @@
         <div id="error" class="error"></div>
     </div>
 
+    <!-- Seed to Tree Loading Animation -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">Growing your connection...</div>
+    </div>
+
     <script>
         const AUTH_KEY = 'sg_auth_token';
         const AUTH_EXPIRY_KEY = 'sg_auth_expires';
-        const API_BASE = 'https://maseed.onrender.com/api';
+        const API_BASE = 'https://maseed.farm/api';
 
         // If already logged in and token still valid, skip login page
         async function redirectIfAuthenticated() {
@@ -480,6 +585,23 @@
             document.getElementById('error').textContent = '';
         });
 
+        // Loading overlay functions
+        function showLoading(message = 'Loading...') {
+            const overlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            if (overlay) {
+                overlay.classList.add('active');
+                if (loadingText) loadingText.textContent = message;
+            }
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+        }
+
         // Login form handler
         document.getElementById('loginForm').addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -487,6 +609,7 @@
             const password = event.target.password.value.trim();
             const remember = document.getElementById('rememberMe').checked;
             const errorEl = document.getElementById('error');
+            const submitButton = event.target.querySelector('button[type="submit"]');
 
             if (!email || !password) {
                 errorEl.textContent = 'Please enter both email and password.';
@@ -502,14 +625,30 @@
                 return;
             }
 
+            // Show loading animation
+            showLoading('Growing your connection...');
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+
+            // Helper function to add timeout to fetch
+            function fetchWithTimeout(url, options, timeout = 15000) {
+                return Promise.race([
+                    fetch(url, options),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Request timeout - server is taking too long to respond')), timeout)
+                    )
+                ]);
+            }
+
             try {
-                const response = await fetch(`${API_BASE}/auth/login`, {
+                const response = await fetchWithTimeout(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ email, password })
-                });
+                }, 15000); // 15 second timeout
 
                 const data = await response.json();
 
@@ -519,14 +658,33 @@
                     localStorage.setItem(AUTH_EXPIRY_KEY, String(expiryTime));
                     errorEl.textContent = '';
                     errorEl.classList.remove('success');
+                    
+                    // Update loading message
+                    const loadingText = document.getElementById('loadingText');
+                    if (loadingText) loadingText.textContent = 'Connection successful! Redirecting...';
+                    
+                    // Small delay to show success message
+                    setTimeout(() => {
                     window.location.href = 'index.html';
+                    }, 500);
                 } else {
+                    hideLoading();
+                    if (submitButton) submitButton.disabled = false;
                     errorEl.textContent = data.error || 'Invalid username or password.';
                     errorEl.classList.remove('success');
                 }
             } catch (error) {
                 console.error('Login error:', error);
+                hideLoading();
+                if (submitButton) submitButton.disabled = false;
+                
+                if (error.message.includes('timeout')) {
+                    errorEl.textContent = 'Server is taking too long to respond. Please try again.';
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorEl.textContent = 'Cannot connect to server. Please check your connection and try again.';
+                } else {
                 errorEl.textContent = 'Connection error. Please check if the server is running.';
+                }
                 errorEl.classList.remove('success');
             }
         });
@@ -583,14 +741,31 @@
                 return;
             }
 
+            // Show loading animation
+            showLoading('Planting your account...');
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+
+            // Helper function to add timeout to fetch
+            function fetchWithTimeout(url, options, timeout = 15000) {
+                return Promise.race([
+                    fetch(url, options),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Request timeout - server is taking too long to respond')), timeout)
+                    )
+                ]);
+            }
+
             try {
-                const response = await fetch(`${API_BASE}/auth/register`, {
+                const response = await fetchWithTimeout(`${API_BASE}/auth/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ email, password, fullName, phone, farmName, farmAddress, position })
-                });
+                }, 15000); // 15 second timeout
 
                 const data = await response.json();
 
@@ -600,17 +775,33 @@
                     localStorage.setItem(AUTH_KEY, data.token);
                     localStorage.setItem(AUTH_EXPIRY_KEY, String(expiryTime));
                     errorEl.classList.add('success');
-                    errorEl.textContent = 'Account created! Redirecting...';
+                    errorEl.textContent = '';
+                    
+                    // Update loading message
+                    const loadingText = document.getElementById('loadingText');
+                    if (loadingText) loadingText.textContent = 'Account created! Redirecting...';
+                    
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 1000);
                 } else {
+                    hideLoading();
+                    if (submitButton) submitButton.disabled = false;
                     errorEl.textContent = data.error || 'Registration failed.';
                     errorEl.classList.remove('success');
                 }
             } catch (error) {
                 console.error('Registration error:', error);
+                hideLoading();
+                if (submitButton) submitButton.disabled = false;
+                
+                if (error.message.includes('timeout')) {
+                    errorEl.textContent = 'Server is taking too long to respond. Please try again.';
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorEl.textContent = 'Cannot connect to server. Please check your connection and try again.';
+                } else {
                 errorEl.textContent = 'Connection error. Please check if the server is running.';
+                }
                 errorEl.classList.remove('success');
             }
         });

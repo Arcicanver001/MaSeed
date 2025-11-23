@@ -9,7 +9,7 @@
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="dns-prefetch" href="https://unpkg.com">
     <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-    <link rel="preconnect" href="https://maseed.onrender.com" crossorigin>
+    <link rel="preconnect" href="https://maseed.farm" crossorigin>
     <link rel="dns-prefetch" href="wss://broker.emqx.io">
     
     <!-- Load scripts asynchronously (defer) - doesn't block page rendering -->
@@ -4447,7 +4447,7 @@ body.nav-drawer-open .actuator-card {
         (async function () {
             const AUTH_KEY = 'sg_auth_token';
             const AUTH_EXPIRY_KEY = 'sg_auth_expires';
-            const API_BASE = 'https://maseed.onrender.com/api';
+            const API_BASE = 'https://maseed.farm/api';
             const token = localStorage.getItem(AUTH_KEY);
             const expiry = parseInt(localStorage.getItem(AUTH_EXPIRY_KEY), 10);
 
@@ -4496,7 +4496,7 @@ body.nav-drawer-open .actuator-card {
 
         // Load user profile and update UI with caching
         async function loadUserProfile(forceRefresh = false) {
-            const API_BASE = 'https://maseed.onrender.com/api';
+            const API_BASE = 'https://maseed.farm/api';
             const AUTH_KEY = 'sg_auth_token';
             const token = localStorage.getItem(AUTH_KEY);
             
@@ -4913,4 +4913,5 @@ body.nav-drawer-open .actuator-card {
     </script>
 </body>
 </html>
+
 

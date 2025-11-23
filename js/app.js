@@ -12,7 +12,7 @@ function sanitizeApiBase(url) {
 function getApiBase() {
     const stored = localStorage.getItem('apiBaseUrl');
     const sanitized = sanitizeApiBase(stored);
-    return sanitized || 'https://maseed.onrender.com/api';
+    return sanitized || 'https://maseed.farm/api';
 }
 
 window.getApiBase = getApiBase;

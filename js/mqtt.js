@@ -1039,7 +1039,7 @@ async function initializeSummaryStatsFromHistory() {
         return;
     }
     
-    const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.onrender.com/api';
+    const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.farm/api';
     const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
     const fromMs = Date.now() - (2 * 60 * 60 * 1000); // Last 2 hours (reduced from 24h to save bandwidth)
     
@@ -1100,7 +1100,7 @@ async function loadLatestValuesFromFirebase() {
         return;
     }
     
-    const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.onrender.com/api';
+    const apiBase = window.getApiBase ? window.getApiBase() : 'https://maseed.farm/api';
     const sensors = ['temperature', 'humidity', 'light', 'ph', 'soil_humidity', 'soil_temperature', 'nitrogen', 'phosphorus', 'potassium'];
     const fromMs = Date.now() - (10 * 60 * 1000); // Last 10 minutes (reduced from 1 hour to save bandwidth)
     

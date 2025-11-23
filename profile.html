@@ -858,7 +858,7 @@
     <script>
             const AUTH_KEY = 'sg_auth_token';
             const AUTH_EXPIRY_KEY = 'sg_auth_expires';
-            const API_BASE = 'https://maseed.onrender.com/api';
+            const API_BASE = 'https://maseed.farm/api';
 
         // Check authentication
         (async function () {
@@ -1204,7 +1204,7 @@
                 console.log('Compressed size (approx):', Math.round(base64Image.length * 0.75), 'bytes');
                 
                 // Update profile with photo
-                const API_BASE = 'https://maseed.onrender.com/api';
+                const API_BASE = 'https://maseed.farm/api';
                 const response = await fetch(`${API_BASE}/auth/profile`, {
                     method: 'PUT',
                     headers: {
