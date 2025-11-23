@@ -79,9 +79,18 @@ function initializeCharts() {
                 grid: { drawOnChartArea: false }
             },
             x: {
+                type: 'category',
                 ticks: { 
                     color: '#a0a0a0',
-                    callback: value => formatTimestampLabel(value)
+                    maxRotation: 45,
+                    minRotation: 0,
+                    callback: function(value, index) {
+                        // Get the actual label from chartData
+                        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[index] !== undefined) {
+                            return formatTimestampLabel(chartData.labels[index]);
+                        }
+                        return formatTimestampLabel(value);
+                    }
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
@@ -122,9 +131,18 @@ function initializeCharts() {
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             },
             x: {
+                type: 'category',
                 ticks: { 
                     color: '#a0a0a0',
-                    callback: value => formatTimestampLabel(value)
+                    maxRotation: 45,
+                    minRotation: 0,
+                    callback: function(value, index) {
+                        // Get the actual label from chartData
+                        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[index] !== undefined) {
+                            return formatTimestampLabel(chartData.labels[index]);
+                        }
+                        return formatTimestampLabel(value);
+                    }
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
@@ -170,9 +188,18 @@ function initializeCharts() {
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             },
             x: {
+                type: 'category',
                 ticks: { 
                     color: '#a0a0a0',
-                    callback: value => formatTimestampLabel(value)
+                    maxRotation: 45,
+                    minRotation: 0,
+                    callback: function(value, index) {
+                        // Get the actual label from chartData
+                        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[index] !== undefined) {
+                            return formatTimestampLabel(chartData.labels[index]);
+                        }
+                        return formatTimestampLabel(value);
+                    }
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
@@ -218,9 +245,18 @@ function initializeCharts() {
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             },
             x: {
+                type: 'category',
                 ticks: { 
                     color: '#a0a0a0',
-                    callback: value => formatTimestampLabel(value)
+                    maxRotation: 45,
+                    minRotation: 0,
+                    callback: function(value, index) {
+                        // Get the actual label from chartData
+                        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[index] !== undefined) {
+                            return formatTimestampLabel(chartData.labels[index]);
+                        }
+                        return formatTimestampLabel(value);
+                    }
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
@@ -266,9 +302,18 @@ function initializeCharts() {
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             },
             x: {
+                type: 'category',
                 ticks: { 
                     color: '#a0a0a0',
-                    callback: value => formatTimestampLabel(value)
+                    maxRotation: 45,
+                    minRotation: 0,
+                    callback: function(value, index) {
+                        // Get the actual label from chartData
+                        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[index] !== undefined) {
+                            return formatTimestampLabel(chartData.labels[index]);
+                        }
+                        return formatTimestampLabel(value);
+                    }
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
@@ -320,9 +365,18 @@ function initializeCharts() {
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             },
             x: {
+                type: 'category',
                 ticks: { 
                     color: '#a0a0a0',
-                    callback: value => formatTimestampLabel(value)
+                    maxRotation: 45,
+                    minRotation: 0,
+                    callback: function(value, index) {
+                        // Get the actual label from chartData
+                        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[index] !== undefined) {
+                            return formatTimestampLabel(chartData.labels[index]);
+                        }
+                        return formatTimestampLabel(value);
+                    }
                 },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
             }
@@ -394,9 +448,25 @@ function updateChartData() {
 
 // Add timestamp to chart
 function formatTimestampLabel(label) {
+    // Chart.js might pass index instead of label, so we need to get the actual label
+    if (typeof label === 'number') {
+        // If it's a number (index), get the actual label from chartData
+        if (typeof chartData !== 'undefined' && chartData.labels && chartData.labels[label]) {
+            label = chartData.labels[label];
+        } else {
+            return '';
+        }
+    }
+    
     const date = new Date(label);
     if (Number.isNaN(date.getTime())) return label;
-    return date.toLocaleTimeString();
+    
+    // Format to show both time and ensure it's different for each point
+    // Use HH:MM:SS format to show seconds for better differentiation
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
 }
 
 function formatTimestampTooltip(label) {
