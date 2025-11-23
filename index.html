@@ -4447,7 +4447,7 @@ body.nav-drawer-open .actuator-card {
         (async function () {
             const AUTH_KEY = 'sg_auth_token';
             const AUTH_EXPIRY_KEY = 'sg_auth_expires';
-            const API_BASE = 'https://maseed.farm/api';
+            const API_BASE = 'https://api.maseed.farm/api';
             const token = localStorage.getItem(AUTH_KEY);
             const expiry = parseInt(localStorage.getItem(AUTH_EXPIRY_KEY), 10);
 
@@ -4496,7 +4496,7 @@ body.nav-drawer-open .actuator-card {
 
         // Load user profile and update UI with caching
         async function loadUserProfile(forceRefresh = false) {
-            const API_BASE = 'https://maseed.farm/api';
+            const API_BASE = 'https://api.maseed.farm/api';
             const AUTH_KEY = 'sg_auth_token';
             const token = localStorage.getItem(AUTH_KEY);
             
