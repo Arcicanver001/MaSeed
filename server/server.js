@@ -1340,8 +1340,8 @@ app.use((err, req, res, next) => {
 });
 
 const port = parseInt(process.env.PORT || '8080', 10);
-app.listen(port, () => {
-  console.log(`🚀 API listening on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🚀 API listening on http://0.0.0.0:${port}`);
   console.log(`🔥 Firebase Database: ${firebaseConfig.databaseURL}`);
   console.log(`🔐 Authentication endpoints enabled`);
 });
