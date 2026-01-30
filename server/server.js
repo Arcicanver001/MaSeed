@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const mqtt = require('mqtt');
 const { initializeApp } = require('firebase/app');
 const { getDatabase, ref, push, query, orderByChild, startAt, endAt, limitToLast, get, set, update, remove } = require('firebase/database');
@@ -51,6 +52,15 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// Serve static files from parent directory (login.html, index.html, css, js, assets, etc.)
+// This allows the frontend to be served from the same domain
+app.use(express.static(path.join(__dirname, '..'), {
+    maxAge: '1d', // Cache static files for 1 day
+    etag: true,
+    lastModified: true
+}));
+console.log('✅ Static files serving enabled from:', path.join(__dirname, '..'));
 
 // Initialize Firebase
 const firebaseApp = initializeApp(firebaseConfig);
@@ -246,8 +256,13 @@ function isValidReading(sensor, value) {
   }
 }
 
-// Root route - API information page
+// Root route - Redirect to login page
 app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
+// API info page route (accessible at /api-info for reference)
+app.get('/api-info', (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -335,7 +350,7 @@ Example: /api/history?sensor=temperature&fromMs=1733342400000</pre>
         </ul>
         
         <h2>📊 Dashboard</h2>
-        <p>To view the dashboard, open <code>index.html</code> in your browser.</p>
+        <p><a href="/login.html" style="color: #4CAF50;">Go to Login Page</a> | <a href="/index.html" style="color: #4CAF50;">Go to Dashboard</a></p>
         
         <p style="margin-top: 40px; color: #888; font-size: 0.9em;">
             Server started at ${new Date().toLocaleString()}
