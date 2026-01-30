@@ -1051,6 +1051,269 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
 
 // ==================== END AUTHENTICATION ENDPOINTS ====================
 
+// ==================== EMAIL NOTIFICATION SERVICE ====================
+
+// Initialize email service (AWS SES)
+const { initEmailService, sendThresholdAlert } = require('./email-service');
+initEmailService();
+
+// ==================== PUSH NOTIFICATION ENDPOINTS ====================
+
+// Initialize web-push (optional - will work without VAPID keys for testing)
+let webpush;
+let vapidKeys = null;
+
+try {
+  webpush = require('web-push');
+  
+  // Try to get VAPID keys from environment variables
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+  const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+  const vapidEmail = process.env.VAPID_EMAIL || 'mailto:admin@greenhouse.local';
+  
+  if (vapidPublicKey && vapidPrivateKey) {
+    webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+    vapidKeys = { publicKey: vapidPublicKey, privateKey: vapidPrivateKey };
+    console.log('✅ VAPID keys configured for push notifications');
+  } else {
+    // Generate VAPID keys if not provided (for development)
+    console.log('⚠️ VAPID keys not found in environment variables');
+    console.log('   Generating temporary keys for development...');
+    vapidKeys = webpush.generateVAPIDKeys();
+    webpush.setVapidDetails(vapidEmail, vapidKeys.publicKey, vapidKeys.privateKey);
+    console.log('✅ Temporary VAPID keys generated');
+    console.log('   Public Key:', vapidKeys.publicKey);
+    console.log('   ⚠️  For production, set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in .env file');
+  }
+} catch (e) {
+  console.warn('⚠️ web-push module not available. Push notifications will be disabled.');
+  console.warn('   Install with: npm install web-push');
+  webpush = null;
+}
+
+// Get VAPID public key
+app.get('/api/push/vapid-public-key', (req, res) => {
+  if (!vapidKeys) {
+    return res.status(503).json({ error: 'Push notifications not configured' });
+  }
+  setCORSHeaders(req, res);
+  res.json({ publicKey: vapidKeys.publicKey });
+});
+
+// Subscribe to push notifications
+app.post('/api/push/subscribe', async (req, res) => {
+  if (!webpush || !vapidKeys) {
+    return res.status(503).json({ error: 'Push notifications not available' });
+  }
+
+  try {
+    const { subscription, userAgent, endpoint } = req.body;
+
+    if (!subscription || !endpoint) {
+      return res.status(400).json({ error: 'Subscription data required' });
+    }
+
+    // Get user info from token if available
+    let userId = null;
+    let userEmail = null;
+    try {
+      const authHeader = req.headers['authorization'];
+      const token = authHeader && authHeader.split(' ')[1];
+      if (token) {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.id;
+        userEmail = decoded.email;
+      }
+    } catch (e) {
+      // Token not required for anonymous subscriptions
+    }
+
+    // Store subscription in Firebase
+    const subscriptionRef = ref(db, `pushSubscriptions/${encodeEmailForFirebase(endpoint)}`);
+    const subscriptionData = {
+      subscription: subscription,
+      endpoint: endpoint,
+      userAgent: userAgent || 'Unknown',
+      userId: userId || 'anonymous',
+      userEmail: userEmail || 'anonymous',
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    await set(subscriptionRef, subscriptionData);
+
+    console.log(`✅ Push subscription saved: ${endpoint.substring(0, 50)}...`);
+    setCORSHeaders(req, res);
+    res.json({ success: true, message: 'Subscription saved' });
+  } catch (error) {
+    console.error('❌ Push subscription error:', error);
+    setCORSHeaders(req, res);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unsubscribe from push notifications
+app.post('/api/push/unsubscribe', async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+
+    if (!endpoint) {
+      return res.status(400).json({ error: 'Endpoint required' });
+    }
+
+    // Remove subscription from Firebase
+    const subscriptionRef = ref(db, `pushSubscriptions/${encodeEmailForFirebase(endpoint)}`);
+    await remove(subscriptionRef);
+
+    console.log(`✅ Push subscription removed: ${endpoint.substring(0, 50)}...`);
+    setCORSHeaders(req, res);
+    res.json({ success: true, message: 'Subscription removed' });
+  } catch (error) {
+    console.error('❌ Push unsubscribe error:', error);
+    setCORSHeaders(req, res);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Verify subscription
+app.post('/api/push/verify', async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+
+    if (!endpoint) {
+      return res.status(400).json({ error: 'Endpoint required' });
+    }
+
+    const subscriptionRef = ref(db, `pushSubscriptions/${encodeEmailForFirebase(endpoint)}`);
+    const snapshot = await get(subscriptionRef);
+
+    setCORSHeaders(req, res);
+    res.json({ valid: snapshot.exists() });
+  } catch (error) {
+    console.error('❌ Push verify error:', error);
+    setCORSHeaders(req, res);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Send push notification to all subscribers (admin/test endpoint)
+app.post('/api/push/send', authenticateToken, async (req, res) => {
+  if (!webpush || !vapidKeys) {
+    return res.status(503).json({ error: 'Push notifications not available' });
+  }
+
+  try {
+    const { title, body, icon, url, tag } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'Title and body required' });
+    }
+
+    // Get all subscriptions from Firebase
+    const subscriptionsRef = ref(db, 'pushSubscriptions');
+    const snapshot = await get(subscriptionsRef);
+
+    if (!snapshot.exists()) {
+      return res.json({ success: true, sent: 0, message: 'No subscriptions found' });
+    }
+
+    const payload = JSON.stringify({
+      title: title,
+      body: body,
+      icon: icon || '/assets/icon-192x192.png',
+      badge: '/assets/badge-72x72.png',
+      tag: tag || 'greenhouse-notification',
+      url: url || '/',
+      requireInteraction: false
+    });
+
+    const subscriptions = [];
+    snapshot.forEach((childSnapshot) => {
+      const data = childSnapshot.val();
+      if (data && data.subscription) {
+        subscriptions.push(data.subscription);
+      }
+    });
+
+    // Send to all subscriptions
+    const results = await Promise.allSettled(
+      subscriptions.map(sub => 
+        webpush.sendNotification(sub, payload).catch(err => {
+          console.error('❌ Push send error:', err.statusCode, err.message);
+          // If subscription is invalid, remove it
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            const endpoint = sub.endpoint;
+            const subscriptionRef = ref(db, `pushSubscriptions/${encodeEmailForFirebase(endpoint)}`);
+            remove(subscriptionRef).catch(e => console.error('Error removing invalid subscription:', e));
+          }
+          throw err;
+        })
+      )
+    );
+
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    console.log(`📤 Push notification sent: ${successful} successful, ${failed} failed`);
+    setCORSHeaders(req, res);
+    res.json({ 
+      success: true, 
+      sent: successful, 
+      failed: failed,
+      total: subscriptions.length 
+    });
+  } catch (error) {
+    console.error('❌ Push send error:', error);
+    setCORSHeaders(req, res);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== END PUSH NOTIFICATION ENDPOINTS ====================
+
+// ==================== EMAIL NOTIFICATION ENDPOINTS ====================
+
+// Send email notification for threshold alerts
+app.post('/api/notifications/email', authenticateToken, async (req, res) => {
+  try {
+    const { sensorName, value, evaluation } = req.body;
+    const userEmail = req.user.email;
+
+    if (!sensorName || value === undefined || !evaluation) {
+      return res.status(400).json({ error: 'Missing required fields: sensorName, value, evaluation' });
+    }
+
+    if (!userEmail) {
+      return res.status(400).json({ error: 'User email not found' });
+    }
+
+    const result = await sendThresholdAlert(sensorName, value, evaluation, userEmail);
+    
+    if (result.success) {
+      setCORSHeaders(req, res);
+      res.json({ 
+        success: true, 
+        message: 'Email sent successfully',
+        messageId: result.messageId 
+      });
+    } else {
+      // Don't return 500 if it's a configuration issue
+      const statusCode = result.code === 'MessageRejected' ? 400 : 500;
+      setCORSHeaders(req, res);
+      res.status(statusCode).json({ 
+        error: result.error || 'Failed to send email',
+        code: result.code 
+      });
+    }
+  } catch (error) {
+    console.error('Email notification error:', error);
+    setCORSHeaders(req, res);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== END EMAIL NOTIFICATION ENDPOINTS ====================
+
 // Note: CORS middleware already handles OPTIONS preflight requests automatically
 // No need for explicit app.options('*') handler (Express 5 doesn't support wildcard in options)
 

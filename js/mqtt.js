@@ -272,6 +272,10 @@ function updateCurrentStatus() {
             
             if (evaluation.status === 'danger') {
                 criticalIssues.push(sensor.name);
+                // Send push notification for critical alerts
+                if (typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts(sensor.type, sensor.value, evaluation);
+                }
             } else if (evaluation.status === 'warning') {
                 warnings.push(sensor.name);
             }
@@ -597,12 +601,21 @@ function evaluateNPK(value, nutrient) {
 
 function updateStatus(elementId, evaluation) {
     const element = document.getElementById(elementId);
+    if (!element) {
+        console.warn(`⚠️ Element not found: ${elementId}`);
+        return; // Exit early if element doesn't exist
+    }
     element.textContent = evaluation.text;
     element.className = `status-indicator status-${evaluation.status}`;
 }
 
 function updateRecommendation(elementId, sensor, value) {
     const element = document.getElementById(elementId);
+    if (!element) {
+        console.warn(`⚠️ Recommendation element not found: ${elementId}`);
+        return; // Exit early if element doesn't exist
+    }
+    
     let recommendation = '';
     
     switch(sensor) {
@@ -800,22 +813,35 @@ function handleMessage(topic, message) {
             console.log(`🧪 Updating pH: ${value}`);
             const phElement = document.getElementById('phValue');
             const phTimeElement = document.getElementById('phTime');
+            const phStatusElement = document.getElementById('phStatus');
+            const phRecommendationElement = document.getElementById('phRecommendation');
+            
             if (phElement) {
                 phElement.textContent = value.toFixed(1);
             } else {
-                console.error('❌ phValue element not found!');
+                console.warn('⚠️ phValue element not found!');
             }
             if (phTimeElement) {
                 phTimeElement.textContent = 'Updated: ' + displayTime;
             } else {
-                console.error('❌ phTime element not found!');
+                console.warn('⚠️ phTime element not found!');
             }
             
-            // Update status and recommendations
+            // Update status and recommendations (with null checks)
             const phEvaluation = evaluatePH(value);
             console.log(`   Status: ${phEvaluation.status} (${phEvaluation.text})`);
-            updateStatus('phStatus', phEvaluation);
-            updateRecommendation('phRecommendation', 'ph', value);
+            
+            if (phStatusElement) {
+                updateStatus('phStatus', phEvaluation);
+            } else {
+                console.warn('⚠️ phStatus element not found!');
+            }
+            
+            if (phRecommendationElement) {
+                updateRecommendation('phRecommendation', 'ph', value);
+            } else {
+                console.warn('⚠️ phRecommendation element not found!');
+            }
             
             // Update summary statistics
             updateSummaryStats('ph', value);

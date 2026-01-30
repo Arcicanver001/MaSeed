@@ -1398,7 +1398,196 @@ function loadSettings() {
     if (settings.farmLocation) document.getElementById('farmLocation').value = settings.farmLocation;
     if (settings.equipmentInventory) document.getElementById('equipmentInventory').value = settings.equipmentInventory;
     if (settings.farmNotes) document.getElementById('farmNotes').value = settings.farmNotes;
+    
+    // Load push notification settings
+    loadPushNotificationSettings();
+    
+    // Load email notification settings
+    loadEmailNotificationSettings();
 }
+
+// Push Notification Management Functions
+async function loadPushNotificationSettings() {
+    // Wait for push notification manager to initialize
+    if (!window.pushNotificationManager) {
+        setTimeout(loadPushNotificationSettings, 500);
+        return;
+    }
+
+    const manager = window.pushNotificationManager;
+    const statusIcon = document.getElementById('pushStatusIcon');
+    const statusText = document.getElementById('pushStatusText');
+    const statusDetails = document.getElementById('pushStatusDetails');
+    const subscribeBtn = document.getElementById('subscribePushBtn');
+    const unsubscribeBtn = document.getElementById('unsubscribePushBtn');
+    const testBtn = document.getElementById('testPushBtn');
+    const enabledCheckbox = document.getElementById('pushNotificationsEnabled');
+
+    if (!statusIcon || !statusText) return;
+
+    // Check support
+    if (!manager.isSupported) {
+        statusIcon.textContent = '❌';
+        statusText.textContent = 'Push notifications not supported';
+        statusDetails.textContent = 'Your browser does not support Web Push API. Try using Chrome, Firefox, or Edge.';
+        if (subscribeBtn) subscribeBtn.style.display = 'none';
+        if (unsubscribeBtn) unsubscribeBtn.style.display = 'none';
+        if (testBtn) testBtn.style.display = 'none';
+        if (enabledCheckbox) enabledCheckbox.disabled = true;
+        return;
+    }
+
+    // Check permission
+    const permission = manager.getPermissionStatus();
+    const isSubscribed = await manager.isSubscribed();
+
+    // Load preferences
+    if (enabledCheckbox) {
+        enabledCheckbox.checked = localStorage.getItem('pushNotificationsEnabled') !== 'false';
+    }
+    
+    ['danger', 'warning', 'success', 'info'].forEach(type => {
+        const checkbox = document.getElementById(`pushNotification_${type}`);
+        if (checkbox) {
+            const saved = localStorage.getItem(`pushNotification_${type}`);
+            checkbox.checked = saved !== 'false';
+        }
+    });
+
+    // Update UI based on state
+    if (permission === 'denied') {
+        statusIcon.textContent = '🚫';
+        statusText.textContent = 'Push notifications blocked';
+        statusDetails.textContent = 'Please enable notifications in your browser settings.';
+        if (subscribeBtn) subscribeBtn.style.display = 'none';
+        if (unsubscribeBtn) unsubscribeBtn.style.display = 'none';
+        if (testBtn) testBtn.style.display = 'none';
+    } else if (isSubscribed) {
+        statusIcon.textContent = '✅';
+        statusText.textContent = 'Push notifications enabled';
+        statusDetails.textContent = 'You will receive notifications for alerts and warnings.';
+        if (subscribeBtn) subscribeBtn.style.display = 'none';
+        if (unsubscribeBtn) unsubscribeBtn.style.display = 'inline-block';
+        if (testBtn) testBtn.style.display = 'inline-block';
+    } else {
+        statusIcon.textContent = '⏸️';
+        statusText.textContent = 'Push notifications not enabled';
+        statusDetails.textContent = 'Click "Enable Push Notifications" to start receiving alerts.';
+        if (subscribeBtn) subscribeBtn.style.display = 'inline-block';
+        if (unsubscribeBtn) unsubscribeBtn.style.display = 'none';
+        if (testBtn) testBtn.style.display = 'none';
+    }
+}
+
+async function subscribeToPushNotifications() {
+    if (!window.pushNotificationManager) {
+        alert('Push notification manager not initialized. Please refresh the page.');
+        return;
+    }
+
+    try {
+        const btn = document.getElementById('subscribePushBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Enabling...';
+        }
+
+        await window.pushNotificationManager.subscribe();
+        localStorage.setItem('pushNotificationsEnabled', 'true');
+        
+        alert('✅ Push notifications enabled! You will now receive alerts even when the browser is closed.');
+        loadPushNotificationSettings();
+    } catch (error) {
+        console.error('Subscription error:', error);
+        alert('Failed to enable push notifications: ' + error.message);
+        const btn = document.getElementById('subscribePushBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Enable Push Notifications';
+        }
+    }
+}
+
+async function unsubscribeFromPushNotifications() {
+    if (!window.pushNotificationManager) {
+        return;
+    }
+
+    try {
+        const btn = document.getElementById('unsubscribePushBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Disabling...';
+        }
+
+        await window.pushNotificationManager.unsubscribe();
+        localStorage.setItem('pushNotificationsEnabled', 'false');
+        
+        alert('Push notifications disabled.');
+        loadPushNotificationSettings();
+    } catch (error) {
+        console.error('Unsubscribe error:', error);
+        alert('Failed to disable push notifications: ' + error.message);
+        const btn = document.getElementById('unsubscribePushBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Disable Push Notifications';
+        }
+    }
+}
+
+async function testPushNotification() {
+    if (!window.pushNotificationManager) {
+        alert('Push notification manager not initialized.');
+        return;
+    }
+
+    try {
+        await window.pushNotificationManager.testNotification();
+        alert('Test notification sent! Check your notifications.');
+    } catch (error) {
+        console.error('Test notification error:', error);
+        alert('Failed to send test notification: ' + error.message);
+    }
+}
+
+// Save push notification preferences
+function savePushNotificationSettings() {
+    const enabled = document.getElementById('pushNotificationsEnabled');
+    if (enabled) {
+        localStorage.setItem('pushNotificationsEnabled', enabled.checked ? 'true' : 'false');
+    }
+
+    ['danger', 'warning', 'success', 'info'].forEach(type => {
+        const checkbox = document.getElementById(`pushNotification_${type}`);
+        if (checkbox) {
+            localStorage.setItem(`pushNotification_${type}`, checkbox.checked ? 'true' : 'false');
+        }
+    });
+
+    alert('Push notification preferences saved!');
+}
+
+// Email Notification Management Functions
+function loadEmailNotificationSettings() {
+    const emailEnabled = document.getElementById('emailNotificationsEnabled');
+    if (emailEnabled) {
+        // Default to enabled if not set
+        emailEnabled.checked = localStorage.getItem('emailNotificationsEnabled') !== 'false';
+        
+        // Save preference when changed
+        emailEnabled.addEventListener('change', function() {
+            localStorage.setItem('emailNotificationsEnabled', this.checked ? 'true' : 'false');
+            console.log('[Email] Email notifications', this.checked ? 'enabled' : 'disabled');
+        });
+    }
+}
+
+// Make functions globally available
+window.subscribeToPushNotifications = subscribeToPushNotifications;
+window.unsubscribeFromPushNotifications = unsubscribeFromPushNotifications;
+window.testPushNotification = testPushNotification;
+window.savePushNotificationSettings = savePushNotificationSettings;
 
 function testConnection() {
     const broker = document.getElementById('settingsMqttBroker').value;

@@ -23,6 +23,8 @@
     <script src="js/charts.js" defer></script>
     <script src="js/mqtt.js" defer></script>
     <script src="js/ui.js" defer></script>
+    <script src="js/push-notifications.js" defer></script>
+    <script src="js/push-integration.js" defer></script>
     
     <!-- Early function definitions for button onclick handlers -->
     <script>
@@ -2799,6 +2801,109 @@ body.nav-drawer-open .actuator-card {
                     <button class="btn-primary" onclick="testConnection()">Test Connection</button>
                 </div>
 
+                <!-- Push Notification Settings -->
+                <div class="settings-section">
+                    <h3>🔔 Push Notification Settings</h3>
+                    <p style="color: #a0a0a0; margin-bottom: 20px; font-size: 0.9rem;">
+                        Receive push notifications on your device even when the browser is closed. 
+                        Notifications work on mobile devices and desktop browsers that support Web Push API.
+                    </p>
+                    
+                    <div id="pushNotificationStatus" style="margin-bottom: 20px; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <span id="pushStatusIcon">⏳</span>
+                            <span id="pushStatusText">Checking push notification support...</span>
+                        </div>
+                        <div id="pushStatusDetails" style="font-size: 0.85rem; color: #a0a0a0;"></div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="pushNotificationsEnabled" checked>
+                                <span>Enable Push Notifications</span>
+                            </label>
+                            <small style="color: #a0a0a0; font-size: 0.85rem;">
+                                Receive notifications for critical alerts and warnings
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="pushNotification_danger" checked>
+                                <span>Critical Alerts</span>
+                            </label>
+                            <small style="color: #a0a0a0; font-size: 0.85rem;">
+                                Always enabled for critical sensor issues
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="pushNotification_warning" checked>
+                                <span>Warning Alerts</span>
+                            </label>
+                            <small style="color: #a0a0a0; font-size: 0.85rem;">
+                                Receive notifications for sensor warnings
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="pushNotification_success">
+                                <span>Success Notifications</span>
+                            </label>
+                            <small style="color: #a0a0a0; font-size: 0.85rem;">
+                                Receive notifications for successful operations
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="pushNotification_info">
+                                <span>Info Notifications</span>
+                            </label>
+                            <small style="color: #a0a0a0; font-size: 0.85rem;">
+                                Receive general information notifications
+                            </small>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 20px;">
+                        <button class="btn-primary" id="subscribePushBtn" onclick="subscribeToPushNotifications()" style="display: none;">
+                            Enable Push Notifications
+                        </button>
+                        <button class="btn-secondary" id="unsubscribePushBtn" onclick="unsubscribeFromPushNotifications()" style="display: none;">
+                            Disable Push Notifications
+                        </button>
+                        <button class="btn-secondary" id="testPushBtn" onclick="testPushNotification()" style="display: none;">
+                            Test Notification
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Email Notification Settings -->
+                <div class="settings-section">
+                    <h3>📧 Email Notification Settings</h3>
+                    <p style="color: #a0a0a0; margin-bottom: 20px; font-size: 0.9rem;">
+                        Receive email alerts via AWS SES when sensor thresholds are exceeded. 
+                        Emails are sent directly to your registered email address and are less likely to be marked as spam.
+                    </p>
+                    
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="emailNotificationsEnabled" checked>
+                            <span>Enable Email Notifications</span>
+                        </label>
+                        <small style="color: #a0a0a0; font-size: 0.85rem;">
+                            Receive email alerts for critical threshold breaches (danger status)
+                        </small>
+                    </div>
+
+                    <div style="margin-top: 15px; padding: 15px; background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4caf50; border-radius: 4px;">
+                        <p style="margin: 0; font-size: 0.9rem; color: #a0a0a0;">
+                            <strong style="color: #4caf50;">✅ AWS SES Configured</strong><br>
+                            Email notifications are sent via Amazon SES for high deliverability and low spam risk.
+                        </p>
+                    </div>
+                </div>
+
                 <!-- Sensor Calibration & Thresholds -->
                 <div class="settings-section">
                     <h3>🎯 Sensor Calibration & Thresholds</h3>
@@ -2894,6 +2999,15 @@ body.nav-drawer-open .actuator-card {
                         </div>
                     </div>
                     <button class="btn-primary" onclick="saveAutomation()">Save Automation Settings</button>
+                </div>
+
+                <!-- Push Notification Preferences -->
+                <div class="settings-section">
+                    <h3>🔔 Notification Preferences</h3>
+                    <p style="color: #a0a0a0; margin-bottom: 20px; font-size: 0.9rem;">
+                        Configure which types of notifications you want to receive via push notifications.
+                    </p>
+                    <button class="btn-primary" onclick="savePushNotificationSettings()">Save Notification Preferences</button>
                 </div>
 
                 <!-- Farm Information -->
