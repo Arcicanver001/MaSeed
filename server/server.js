@@ -53,12 +53,19 @@ app.use((req, res, next) => {
     next();
 });
 
+// Root route - Redirect to login page (must be before static file serving)
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
 // Serve static files from parent directory (login.html, index.html, css, js, assets, etc.)
 // This allows the frontend to be served from the same domain
+// Note: index option is false to prevent serving index.html at root
 app.use(express.static(path.join(__dirname, '..'), {
     maxAge: '1d', // Cache static files for 1 day
     etag: true,
-    lastModified: true
+    lastModified: true,
+    index: false // Don't serve index.html automatically at root
 }));
 console.log('✅ Static files serving enabled from:', path.join(__dirname, '..'));
 
@@ -255,11 +262,6 @@ function isValidReading(sensor, value) {
     default: return true;
   }
 }
-
-// Root route - Redirect to login page
-app.get('/', (req, res) => {
-  res.redirect('/login.html');
-});
 
 // API info page route (accessible at /api-info for reference)
 app.get('/api-info', (req, res) => {
