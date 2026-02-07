@@ -231,10 +231,81 @@ function getSensorUnit(sensorName) {
   }
 })();
 
+// Manual trigger function to send email notifications for all critical sensors
+// Bypasses cooldown period - use for testing
+async function manualTriggerEmailAlerts() {
+  console.log('📧 Manual Email Trigger: Checking all sensors...');
+  
+  // Helper to get current value from DOM
+  function getCurrentValue(elementId) {
+    const element = document.getElementById(elementId);
+    if (!element) return null;
+    const text = element.textContent.trim();
+    if (!text || text === 'N/A' || text === '--') return null;
+    const value = parseFloat(text);
+    return isNaN(value) ? null : value;
+  }
+  
+  // Check all sensors
+  const sensors = [
+    { type: 'temperature', value: getCurrentValue('tempValue'), evaluate: evaluateTemperature },
+    { type: 'humidity', value: getCurrentValue('humidityValue'), evaluate: evaluateHumidity },
+    { type: 'light', value: getCurrentValue('lightValue'), evaluate: evaluateLight },
+    { type: 'ph', value: getCurrentValue('phValue'), evaluate: evaluatePH },
+    { type: 'soilHumidity', value: getCurrentValue('soilHumidityValue'), evaluate: evaluateSoilHumidity },
+    { type: 'soilTemperature', value: getCurrentValue('soilTempValue'), evaluate: evaluateSoilTemperature },
+    { type: 'nitrogen', value: getCurrentValue('nitrogenValue'), evaluate: (v) => evaluateNPK(v, 'N') },
+    { type: 'phosphorus', value: getCurrentValue('phosphorusValue'), evaluate: (v) => evaluateNPK(v, 'P') },
+    { type: 'potassium', value: getCurrentValue('potassiumValue'), evaluate: (v) => evaluateNPK(v, 'K') }
+  ];
+  
+  let sentCount = 0;
+  const results = [];
+  
+  for (const sensor of sensors) {
+    if (sensor.value === null || sensor.value === undefined) {
+      console.log(`⏭️  ${sensor.type}: No value`);
+      continue;
+    }
+    
+    const evaluation = sensor.evaluate(sensor.value);
+    if (!evaluation) {
+      console.log(`⏭️  ${sensor.type}: Cannot evaluate`);
+      continue;
+    }
+    
+    if (evaluation.status === 'danger') {
+      console.log(`🚨 ${sensor.type}: ${sensor.value} - CRITICAL - Sending email...`);
+      
+      try {
+        // Directly call sendEmailNotification (bypasses cooldown)
+        await sendEmailNotification(sensor.type, sensor.value, evaluation);
+        sentCount++;
+        results.push({ sensor: sensor.type, value: sensor.value, status: '✅ Sent' });
+        console.log(`✅ Email sent for ${sensor.type}`);
+      } catch (error) {
+        console.error(`❌ Failed to send email for ${sensor.type}:`, error);
+        results.push({ sensor: sensor.type, value: sensor.value, status: '❌ Error', error: error.message });
+      }
+    } else {
+      console.log(`✅ ${sensor.type}: ${sensor.value} - ${evaluation.text}`);
+    }
+  }
+  
+  console.log(`\n📊 Summary: ${sentCount} email(s) sent`);
+  if (results.length > 0) {
+    console.table(results);
+  }
+  
+  return { sent: sentCount, results };
+}
+
 // Export functions
 window.showAlertWithPush = showAlertWithPush;
 window.sendPushNotification = sendPushNotification;
 window.sendEmailNotification = sendEmailNotification;
 window.checkSensorAlerts = checkSensorAlerts;
+window.manualTriggerEmailAlerts = manualTriggerEmailAlerts;
+window.triggerEmail = manualTriggerEmailAlerts; // Shorter alias
 
 
