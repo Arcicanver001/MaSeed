@@ -275,14 +275,15 @@ async function manualTriggerEmailAlerts() {
   const criticalSensors = [];
   
   for (const sensor of sensors) {
-    if (sensor.value === null || sensor.value === undefined) {
-      console.log(`⏭️  ${sensor.type}: No value`);
+    // Fix: Explicitly check for null/undefined, but allow 0 (0 is a valid sensor reading)
+    if (sensor.value === null || sensor.value === undefined || isNaN(sensor.value)) {
+      console.log(`⏭️  ${sensor.type}: No value (value: ${sensor.value})`);
       continue;
     }
     
     const evaluation = sensor.evaluate(sensor.value);
     if (!evaluation) {
-      console.log(`⏭️  ${sensor.type}: Cannot evaluate`);
+      console.log(`⏭️  ${sensor.type}: Cannot evaluate (value: ${sensor.value})`);
       continue;
     }
     
@@ -290,7 +291,7 @@ async function manualTriggerEmailAlerts() {
       console.log(`🚨 ${sensor.type}: ${sensor.value} - CRITICAL`);
       criticalSensors.push({
         sensorName: sensor.type,
-        value: sensor.value,
+        value: sensor.value,  // This will be 0 for nitrogen if it's 0
         evaluation: evaluation
       });
     } else {
@@ -298,12 +299,16 @@ async function manualTriggerEmailAlerts() {
     }
   }
   
+  // Debug: Log all critical sensors being sent
+  console.log(`📋 Critical sensors collected:`, criticalSensors.map(s => `${s.sensorName}: ${s.value}`).join(', '));
+  
   if (criticalSensors.length === 0) {
     console.log('✅ No critical sensors found. All sensors are within normal range.');
     return { sent: 0, results: [], message: 'No critical sensors' };
   }
   
   console.log(`\n📧 Sending ONE consolidated email for ${criticalSensors.length} critical sensor(s)...`);
+  console.log('📤 Sensors payload:', JSON.stringify(criticalSensors, null, 2));
   
   try {
     const apiBase = window.getApiBase ? window.getApiBase() : 'https://api.maseed.farm/api';

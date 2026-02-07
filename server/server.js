@@ -1302,6 +1302,8 @@ app.post('/api/notifications/email', authenticateToken, async (req, res) => {
 
     // Check if multiple sensors are provided
     if (sensors && Array.isArray(sensors) && sensors.length > 0) {
+      // Log received sensors for debugging
+      console.log(`📧 Received ${sensors.length} critical sensor(s) for email:`, sensors.map(s => `${s.sensorName}: ${s.value}`).join(', '));
       // Send consolidated email for multiple sensors
       const result = await sendMultipleThresholdAlerts(sensors, userEmail);
       

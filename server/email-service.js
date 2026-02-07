@@ -409,10 +409,16 @@ async function sendMultipleThresholdAlerts(sensors, userEmail) {
     const unit = sensorUnits[sensor.sensorName] || '';
     const severityColor = '#f44336';
     
+    // Ensure value is displayed correctly even if 0
+    const displayValue = (sensor.value !== null && sensor.value !== undefined) ? sensor.value : 'N/A';
+    
+    // Log each sensor being added to email (for debugging)
+    console.log(`📧 Adding sensor to email: ${label} = ${displayValue}${unit} (${sensor.evaluation.text})`);
+    
     sensorsHtml += `
       <div style="background: #ffebee; border-left: 4px solid ${severityColor}; padding: 15px; margin: 15px 0; border-radius: 4px;">
         <h3 style="margin: 0 0 10px 0; color: ${severityColor}; font-size: 18px;">${label}</h3>
-        <p style="margin: 5px 0;"><strong>Current Value:</strong> <span style="font-size: 24px; font-weight: bold; color: ${severityColor};">${sensor.value}${unit}</span></p>
+        <p style="margin: 5px 0;"><strong>Current Value:</strong> <span style="font-size: 24px; font-weight: bold; color: ${severityColor};">${displayValue}${unit}</span></p>
         <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${severityColor}; font-weight: bold;">${sensor.evaluation.text}</span></p>
         <div style="margin-top: 10px; padding: 10px; background: #fff; border-radius: 4px;">
           <strong>Recommended Actions:</strong>
@@ -425,7 +431,7 @@ async function sendMultipleThresholdAlerts(sensors, userEmail) {
 
     sensorsText += `
 ${label}
-Current Value: ${sensor.value}${unit}
+Current Value: ${displayValue}${unit}
 Status: ${sensor.evaluation.text}
 Recommended Actions:
 ${getTextRecommendation(sensor.sensorName, sensor.value)}
