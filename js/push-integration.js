@@ -70,7 +70,7 @@ async function sendPushNotification(message, type = 'info', options = {}) {
   // Always send critical alerts
   if (type === 'danger' || type === 'warning') {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('sg_auth_token');
       const apiBase = window.getApiBase ? window.getApiBase() : 'https://api.maseed.farm/api';
       
       await fetch(`${apiBase}/push/send`, {
