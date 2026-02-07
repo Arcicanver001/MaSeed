@@ -2674,18 +2674,18 @@ body.nav-drawer-open .actuator-card {
                         </div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Export Format</label>
+                            <label for="exportFormat">Export Format</label>
                             <select id="exportFormat">
                                 <option value="csv">CSV (Excel Compatible)</option>
                                 <option value="pdf">PDF Report</option>
                             </select>
                         </div>
                         <div class="form-group">
-                                <label>Start Date</label>
+                                <label for="exportStartDate">Start Date</label>
                             <input type="date" id="exportStartDate">
                             </div>
                             <div class="form-group">
-                                <label>End Date</label>
+                                <label for="exportEndDate">End Date</label>
                             <input type="date" id="exportEndDate">
                         </div>
                     </div>
@@ -2909,29 +2909,29 @@ body.nav-drawer-open .actuator-card {
                     <h3>🎯 Sensor Calibration & Thresholds</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Temperature Optimal Range</label>
-                            <input type="number" id="tempMin" value="18" placeholder="Min °C">
-                            <input type="number" id="tempMax" value="25" placeholder="Max °C">
+                            <label for="tempMin">Temperature Optimal Range</label>
+                            <input type="number" id="tempMin" value="18" placeholder="Min °C" aria-label="Temperature minimum">
+                            <input type="number" id="tempMax" value="25" placeholder="Max °C" aria-label="Temperature maximum">
                         </div>
                         <div class="form-group">
-                            <label>Humidity Optimal Range</label>
-                            <input type="number" id="humidityMin" value="60" placeholder="Min %">
-                            <input type="number" id="humidityMax" value="80" placeholder="Max %">
+                            <label for="humidityMin">Humidity Optimal Range</label>
+                            <input type="number" id="humidityMin" value="60" placeholder="Min %" aria-label="Humidity minimum">
+                            <input type="number" id="humidityMax" value="80" placeholder="Max %" aria-label="Humidity maximum">
                         </div>
                         <div class="form-group">
-                            <label>pH Optimal Range</label>
-                            <input type="number" id="phMin" value="6.0" step="0.1" placeholder="Min pH">
-                            <input type="number" id="phMax" value="7.0" step="0.1" placeholder="Max pH">
+                            <label for="phMin">pH Optimal Range</label>
+                            <input type="number" id="phMin" value="6.0" step="0.1" placeholder="Min pH" aria-label="pH minimum">
+                            <input type="number" id="phMax" value="7.0" step="0.1" placeholder="Max pH" aria-label="pH maximum">
                         </div>
                         <div class="form-group">
-                            <label>Soil Humidity Optimal Range</label>
-                            <input type="number" id="soilHumidityMin" value="60" placeholder="Min %">
-                            <input type="number" id="soilHumidityMax" value="80" placeholder="Max %">
+                            <label for="soilHumidityMin">Soil Humidity Optimal Range</label>
+                            <input type="number" id="soilHumidityMin" value="60" placeholder="Min %" aria-label="Soil humidity minimum">
+                            <input type="number" id="soilHumidityMax" value="80" placeholder="Max %" aria-label="Soil humidity maximum">
                         </div>
                         <div class="form-group">
-                            <label>Soil Temperature Optimal Range</label>
-                            <input type="number" id="soilTempMin" value="20" placeholder="Min °C">
-                            <input type="number" id="soilTempMax" value="28" placeholder="Max °C">
+                            <label for="soilTempMin">Soil Temperature Optimal Range</label>
+                            <input type="number" id="soilTempMin" value="20" placeholder="Min °C" aria-label="Soil temperature minimum">
+                            <input type="number" id="soilTempMax" value="28" placeholder="Max °C" aria-label="Soil temperature maximum">
                         </div>
                     </div>
                     <button class="btn-primary" onclick="saveThresholds()">Save Thresholds</button>
@@ -2942,7 +2942,7 @@ body.nav-drawer-open .actuator-card {
                     <h3>🌱 Plant & Crop Management</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Current Crop</label>
+                            <label for="currentCrop">Current Crop</label>
                             <select id="currentCrop">
                                 <option value="brassicaceae">Brassicaceae (Cabbage Family)</option>
                                 <option value="tomato">Tomatoes</option>
@@ -2953,7 +2953,7 @@ body.nav-drawer-open .actuator-card {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Growth Stage</label>
+                            <label for="growthStage">Growth Stage</label>
                             <select id="growthStage">
                                 <option value="seedling">Seedling</option>
                                 <option value="vegetative">Vegetative</option>
@@ -2962,11 +2962,11 @@ body.nav-drawer-open .actuator-card {
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Planting Date</label>
+                            <label for="plantingDate">Planting Date</label>
                             <input type="date" id="plantingDate">
                         </div>
                         <div class="form-group">
-                            <label>Expected Harvest</label>
+                            <label for="harvestDate">Expected Harvest</label>
                             <input type="date" id="harvestDate">
                         </div>
                     </div>
@@ -2978,14 +2978,14 @@ body.nav-drawer-open .actuator-card {
                     <h3>🤖 Automation Settings</h3>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label>Auto Watering</label>
+                            <label for="autoWatering">Auto Watering</label>
                             <select id="autoWatering">
                                 <option value="disabled">Disabled</option>
                                 <option value="enabled">Enabled</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Watering Threshold</label>
+                            <label for="wateringThreshold">Watering Threshold</label>
                             <input type="number" id="wateringThreshold" value="30" placeholder="Soil humidity %">
                         </div>
                         <div class="form-group">
