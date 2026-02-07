@@ -233,14 +233,27 @@ function updateCurrentStatus() {
     let statusText = '';
     let recommendations = [];
     
-    // Check each sensor for current status
+    // Helper function to get current value from DOM element
+    function getCurrentValue(elementId) {
+        const element = document.getElementById(elementId);
+        if (!element) return null;
+        const text = element.textContent.trim();
+        if (!text || text === 'N/A' || text === '--') return null;
+        const value = parseFloat(text);
+        return isNaN(value) ? null : value;
+    }
+    
+    // Check each sensor for current status - USE CURRENT VALUES, NOT MAX VALUES
     const sensors = [
-        { name: 'Air Temperature', value: summaryStats.temperature.max, type: 'temperature' },
-        { name: 'Air Humidity', value: summaryStats.humidity.max, type: 'humidity' },
-        { name: 'Light Intensity', value: summaryStats.light.max, type: 'light' },
-        { name: 'Soil pH', value: summaryStats.ph.max, type: 'ph' },
-        { name: 'Soil Moisture', value: summaryStats.soilHumidity.max, type: 'soilHumidity' },
-        { name: 'Soil Temperature', value: summaryStats.soilTemperature.max, type: 'soilTemperature' }
+        { name: 'Air Temperature', value: getCurrentValue('tempValue'), type: 'temperature' },
+        { name: 'Air Humidity', value: getCurrentValue('humidityValue'), type: 'humidity' },
+        { name: 'Light Intensity', value: getCurrentValue('lightValue'), type: 'light' },
+        { name: 'Soil pH', value: getCurrentValue('phValue'), type: 'ph' },
+        { name: 'Soil Moisture', value: getCurrentValue('soilHumidityValue'), type: 'soilHumidity' },
+        { name: 'Soil Temperature', value: getCurrentValue('soilTempValue'), type: 'soilTemperature' },
+        { name: 'Nitrogen', value: getCurrentValue('nitrogenValue'), type: 'nitrogen' },
+        { name: 'Phosphorus', value: getCurrentValue('phosphorusValue'), type: 'phosphorus' },
+        { name: 'Potassium', value: getCurrentValue('potassiumValue'), type: 'potassium' }
     ];
     
     let criticalIssues = [];
@@ -268,15 +281,24 @@ function updateCurrentStatus() {
                 case 'soilTemperature':
                     evaluation = evaluateSoilTemperature(sensor.value);
                     break;
+                case 'nitrogen':
+                    evaluation = evaluateNPK(sensor.value, 'N');
+                    break;
+                case 'phosphorus':
+                    evaluation = evaluateNPK(sensor.value, 'P');
+                    break;
+                case 'potassium':
+                    evaluation = evaluateNPK(sensor.value, 'K');
+                    break;
             }
             
-            if (evaluation.status === 'danger') {
+            if (evaluation && evaluation.status === 'danger') {
                 criticalIssues.push(sensor.name);
-                // Send push notification for critical alerts
+                // Send push notification and email for critical alerts
                 if (typeof checkSensorAlerts === 'function') {
                     checkSensorAlerts(sensor.type, sensor.value, evaluation);
                 }
-            } else if (evaluation.status === 'warning') {
+            } else if (evaluation && evaluation.status === 'warning') {
                 warnings.push(sensor.name);
             }
         }
@@ -739,6 +761,11 @@ function handleMessage(topic, message) {
             updateStatus('tempStatus', tempEvaluation);
             updateRecommendation('tempRecommendation', 'temperature', value);
             
+            // Trigger email alert if critical
+            if (tempEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('temperature', value, tempEvaluation);
+            }
+            
             // Update summary statistics
             updateSummaryStats('temperature', value);
             
@@ -773,6 +800,11 @@ function handleMessage(topic, message) {
             updateStatus('humidityStatus', humidityEvaluation);
             updateRecommendation('humidityRecommendation', 'humidity', value);
             
+            // Trigger email alert if critical
+            if (humidityEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('humidity', value, humidityEvaluation);
+            }
+            
             // Update summary statistics
             updateSummaryStats('humidity', value);
             
@@ -800,6 +832,11 @@ function handleMessage(topic, message) {
             console.log(`   Status: ${lightEvaluation.status} (${lightEvaluation.text})`);
             updateStatus('lightStatus', lightEvaluation);
             updateRecommendation('lightRecommendation', 'light', value);
+            
+            // Trigger email alert if critical
+            if (lightEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('light', value, lightEvaluation);
+            }
             
             // Update summary statistics
             updateSummaryStats('light', value);
@@ -843,6 +880,11 @@ function handleMessage(topic, message) {
                 console.warn('⚠️ phRecommendation element not found!');
             }
             
+            // Trigger email alert if critical
+            if (phEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('ph', value, phEvaluation);
+            }
+            
             // Update summary statistics
             updateSummaryStats('ph', value);
             
@@ -872,6 +914,11 @@ function handleMessage(topic, message) {
             updateStatus('soilHumidityStatus', soilHumidityEvaluation);
             updateRecommendation('soilHumidityRecommendation', 'soilHumidity', value);
             
+            // Trigger email alert if critical
+            if (soilHumidityEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('soilHumidity', value, soilHumidityEvaluation);
+            }
+            
             // Update summary statistics
             updateSummaryStats('soilHumidity', value);
             
@@ -898,6 +945,11 @@ function handleMessage(topic, message) {
             console.log(`   Status: ${soilTempEvaluation.status} (${soilTempEvaluation.text})`);
             updateStatus('soilTempStatus', soilTempEvaluation);
             updateRecommendation('soilTempRecommendation', 'soilTemperature', value);
+            
+            // Trigger email alert if critical
+            if (soilTempEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('soilTemperature', value, soilTempEvaluation);
+            }
             
             // Update summary statistics
             updateSummaryStats('soilTemperature', value);
@@ -931,6 +983,11 @@ function handleMessage(topic, message) {
             console.log(`   Status: ${nitrogenEvaluation.status} (${nitrogenEvaluation.text})`);
             updateStatus('nitrogenStatus', nitrogenEvaluation);
             
+            // Trigger email alert if critical
+            if (nitrogenEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('nitrogen', value, nitrogenEvaluation);
+            }
+            
             // Update summary statistics
             updateSummaryStats('nitrogen', value);
             
@@ -951,6 +1008,11 @@ function handleMessage(topic, message) {
             console.log(`   Status: ${phosphorusEvaluation.status} (${phosphorusEvaluation.text})`);
             updateStatus('phosphorusStatus', phosphorusEvaluation);
             
+            // Trigger email alert if critical
+            if (phosphorusEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('phosphorus', value, phosphorusEvaluation);
+            }
+            
             // Update summary statistics
             updateSummaryStats('phosphorus', value);
             
@@ -970,6 +1032,11 @@ function handleMessage(topic, message) {
             const potassiumEvaluation = evaluateNPK(value, 'K');
             console.log(`   Status: ${potassiumEvaluation.status} (${potassiumEvaluation.text})`);
             updateStatus('potassiumStatus', potassiumEvaluation);
+            
+            // Trigger email alert if critical
+            if (potassiumEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                checkSensorAlerts('potassium', value, potassiumEvaluation);
+            }
             
             // Update summary statistics
             updateSummaryStats('potassium', value);
@@ -1200,6 +1267,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 const tempEvaluation = evaluateTemperature(value);
                 updateStatus('tempStatus', tempEvaluation);
                 updateRecommendation('tempRecommendation', 'temperature', value);
+                // Trigger email alert if critical
+                if (tempEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('temperature', value, tempEvaluation);
+                }
                 updateSummaryStats('temperature', value);
             }
             break;
@@ -1210,6 +1281,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 const humidityEvaluation = evaluateHumidity(value);
                 updateStatus('humidityStatus', humidityEvaluation);
                 updateRecommendation('humidityRecommendation', 'humidity', value);
+                // Trigger email alert if critical
+                if (humidityEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('humidity', value, humidityEvaluation);
+                }
                 updateSummaryStats('humidity', value);
             }
             break;
@@ -1220,6 +1295,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 const lightEvaluation = evaluateLight(value);
                 updateStatus('lightStatus', lightEvaluation);
                 updateRecommendation('lightRecommendation', 'light', value);
+                // Trigger email alert if critical
+                if (lightEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('light', value, lightEvaluation);
+                }
                 updateSummaryStats('light', value);
             }
             break;
@@ -1230,6 +1309,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 const phEvaluation = evaluatePH(value);
                 updateStatus('phStatus', phEvaluation);
                 updateRecommendation('phRecommendation', 'ph', value);
+                // Trigger email alert if critical
+                if (phEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('ph', value, phEvaluation);
+                }
                 updateSummaryStats('ph', value);
             }
             break;
@@ -1240,6 +1323,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 const soilHumidityEvaluation = evaluateSoilHumidity(value);
                 updateStatus('soilHumidityStatus', soilHumidityEvaluation);
                 updateRecommendation('soilHumidityRecommendation', 'soilHumidity', value);
+                // Trigger email alert if critical
+                if (soilHumidityEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('soilHumidity', value, soilHumidityEvaluation);
+                }
                 updateSummaryStats('soilHumidity', value);
             }
             break;
@@ -1250,6 +1337,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 const soilTempEvaluation = evaluateSoilTemperature(value);
                 updateStatus('soilTempStatus', soilTempEvaluation);
                 updateRecommendation('soilTempRecommendation', 'soilTemperature', value);
+                // Trigger email alert if critical
+                if (soilTempEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('soilTemperature', value, soilTempEvaluation);
+                }
                 updateSummaryStats('soilTemperature', value);
             }
             break;
@@ -1259,6 +1350,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 document.getElementById('npkTime').textContent = 'Updated: ' + now;
                 const nitrogenEvaluation = evaluateNPK(value, 'N');
                 updateStatus('nitrogenStatus', nitrogenEvaluation);
+                // Trigger email alert if critical
+                if (nitrogenEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('nitrogen', value, nitrogenEvaluation);
+                }
                 updateSummaryStats('nitrogen', value);
             }
             break;
@@ -1267,6 +1362,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 document.getElementById('phosphorusValue').textContent = Math.round(value);
                 const phosphorusEvaluation = evaluateNPK(value, 'P');
                 updateStatus('phosphorusStatus', phosphorusEvaluation);
+                // Trigger email alert if critical
+                if (phosphorusEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('phosphorus', value, phosphorusEvaluation);
+                }
                 updateSummaryStats('phosphorus', value);
             }
             break;
@@ -1275,6 +1374,10 @@ function updateSensorDisplay(sensor, value, timestamp) {
                 document.getElementById('potassiumValue').textContent = Math.round(value);
                 const potassiumEvaluation = evaluateNPK(value, 'K');
                 updateStatus('potassiumStatus', potassiumEvaluation);
+                // Trigger email alert if critical
+                if (potassiumEvaluation.status === 'danger' && typeof checkSensorAlerts === 'function') {
+                    checkSensorAlerts('potassium', value, potassiumEvaluation);
+                }
                 updateSummaryStats('potassium', value);
             }
             break;
