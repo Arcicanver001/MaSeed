@@ -100,7 +100,7 @@ const ALERT_COOLDOWN = 5 * 60 * 1000; // 5 minutes cooldown between alerts for s
 
 // Send email notification via AWS SES
 async function sendEmailNotification(sensorName, value, evaluation) {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('sg_auth_token');
   if (!token) {
     console.log('[Email] User not logged in, skipping email notification');
     return; // User not logged in
@@ -236,7 +236,7 @@ function getSensorUnit(sensorName) {
 async function manualTriggerEmailAlerts() {
   console.log('📧 Manual Email Trigger: Checking all sensors...');
   
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('sg_auth_token');
   if (!token) {
     console.error('❌ ERROR: User not logged in! Please log in first.');
     return { sent: 0, results: [], error: 'Not logged in' };
