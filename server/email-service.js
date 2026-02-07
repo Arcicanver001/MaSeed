@@ -361,9 +361,264 @@ function getTextRecommendation(sensorName, value) {
   return recommendations[sensorName] || '- Check sensor and take appropriate action\n- Review system logs for details';
 }
 
+// Send consolidated email with multiple critical sensors
+async function sendMultipleThresholdAlerts(sensors, userEmail) {
+  if (!ses) {
+    if (!initEmailService()) {
+      return { success: false, error: 'AWS SES not configured' };
+    }
+  }
+
+  if (!sensors || sensors.length === 0) {
+    return { success: false, error: 'No sensors provided' };
+  }
+
+  const sensorLabels = {
+    temperature: 'Temperature',
+    humidity: 'Humidity',
+    light: 'Light Intensity',
+    ph: 'pH Level',
+    soilHumidity: 'Soil Humidity',
+    soilTemperature: 'Soil Temperature',
+    nitrogen: 'Nitrogen',
+    phosphorus: 'Phosphorus',
+    potassium: 'Potassium'
+  };
+
+  const sensorUnits = {
+    temperature: '°C',
+    humidity: '%',
+    light: ' lux',
+    ph: '',
+    soilHumidity: '%',
+    soilTemperature: '°C',
+    nitrogen: ' mg/kg',
+    phosphorus: ' mg/kg',
+    potassium: ' mg/kg'
+  };
+
+  const criticalCount = sensors.length;
+  const subject = `🚨 CRITICAL Alert: ${criticalCount} Sensor${criticalCount > 1 ? 's' : ''} Require Attention`;
+
+  // Build sensor list HTML
+  let sensorsHtml = '';
+  let sensorsText = '';
+
+  sensors.forEach((sensor) => {
+    const label = sensorLabels[sensor.sensorName] || sensor.sensorName;
+    const unit = sensorUnits[sensor.sensorName] || '';
+    const severityColor = '#f44336';
+    
+    sensorsHtml += `
+      <div style="background: #ffebee; border-left: 4px solid ${severityColor}; padding: 15px; margin: 15px 0; border-radius: 4px;">
+        <h3 style="margin: 0 0 10px 0; color: ${severityColor}; font-size: 18px;">${label}</h3>
+        <p style="margin: 5px 0;"><strong>Current Value:</strong> <span style="font-size: 24px; font-weight: bold; color: ${severityColor};">${sensor.value}${unit}</span></p>
+        <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${severityColor}; font-weight: bold;">${sensor.evaluation.text}</span></p>
+        <div style="margin-top: 10px; padding: 10px; background: #fff; border-radius: 4px;">
+          <strong>Recommended Actions:</strong>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            ${getRecommendation(sensor.sensorName, sensor.value)}
+          </ul>
+        </div>
+      </div>
+    `;
+
+    sensorsText += `
+${label}
+Current Value: ${sensor.value}${unit}
+Status: ${sensor.evaluation.text}
+Recommended Actions:
+${getTextRecommendation(sensor.sensorName, sensor.value)}
+---
+`;
+  });
+
+  // HTML email template
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+          line-height: 1.6; 
+          color: #333; 
+          margin: 0; 
+          padding: 0; 
+          background-color: #f5f5f5;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 20px auto; 
+          background: #ffffff; 
+          border-radius: 8px; 
+          overflow: hidden;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header { 
+          background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+          color: white; 
+          padding: 30px 20px; 
+          text-align: center; 
+        }
+        .header h1 { 
+          margin: 0; 
+          font-size: 24px; 
+          font-weight: 600;
+        }
+        .content { 
+          padding: 30px 20px; 
+        }
+        .alert-box { 
+          background: #ffebee; 
+          border-left: 4px solid #f44336; 
+          padding: 20px; 
+          margin: 20px 0; 
+          border-radius: 4px;
+        }
+        .alert-box h2 {
+          margin: 0 0 10px 0;
+          color: #f44336;
+          font-size: 20px;
+        }
+        .summary {
+          background: #f9f9f9;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+          text-align: center;
+        }
+        .summary strong {
+          font-size: 18px;
+          color: #f44336;
+        }
+        .footer { 
+          margin-top: 30px; 
+          padding-top: 20px; 
+          border-top: 1px solid #e0e0e0; 
+          font-size: 12px; 
+          color: #666; 
+          text-align: center;
+        }
+        .button {
+          display: inline-block;
+          padding: 12px 24px;
+          background: #4caf50;
+          color: white;
+          text-decoration: none;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🚨 Critical Alert</h1>
+        </div>
+        
+        <div class="content">
+          <div class="alert-box">
+            <h2>Multiple Sensors Require Attention</h2>
+            <p>Your greenhouse monitoring system has detected <strong>${criticalCount} critical sensor${criticalCount > 1 ? 's' : ''}</strong> that require immediate attention.</p>
+          </div>
+          
+          <div class="summary">
+            <p><strong>${criticalCount} Critical Sensor${criticalCount > 1 ? 's' : ''} Detected</strong></p>
+            <p style="margin: 5px 0; color: #666;">Time: ${new Date().toLocaleString()}</p>
+          </div>
+          
+          ${sensorsHtml}
+          
+          <div style="text-align: center;">
+            <a href="${process.env.DASHBOARD_URL || 'https://maseed.farm'}" class="button">View Dashboard</a>
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p>This is an automated alert from your Smart Greenhouse Monitoring System.</p>
+          <p>You can manage notification preferences in the dashboard settings.</p>
+          <p style="margin-top: 10px; color: #999;">© ${new Date().getFullYear()} Greenhouse Monitoring System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Plain text version
+  const text = `
+🚨 CRITICAL ALERT: ${criticalCount} Sensor${criticalCount > 1 ? 's' : ''} Require Attention
+
+Your greenhouse monitoring system has detected ${criticalCount} critical sensor${criticalCount > 1 ? 's' : ''} that require immediate attention.
+
+Time: ${new Date().toLocaleString()}
+
+${sensorsText}
+
+Please check your greenhouse dashboard for more details.
+Dashboard: ${process.env.DASHBOARD_URL || 'https://maseed.farm'}
+
+---
+This is an automated alert from your Smart Greenhouse Monitoring System.
+You can manage notification preferences in the dashboard settings.
+  `;
+
+  const params = {
+    Source: fromEmail,
+    Destination: {
+      ToAddresses: [userEmail]
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: 'UTF-8'
+      },
+      Body: {
+        Html: {
+          Data: html,
+          Charset: 'UTF-8'
+        },
+        Text: {
+          Data: text,
+          Charset: 'UTF-8'
+        }
+      }
+    },
+    Tags: [
+      {
+        Name: 'AlertType',
+        Value: 'MultipleThresholdAlert'
+      },
+      {
+        Name: 'SensorCount',
+        Value: criticalCount.toString()
+      }
+    ]
+  };
+
+  try {
+    const result = await ses.sendEmail(params).promise();
+    console.log(`✅ Consolidated threshold alert email sent via AWS SES to ${userEmail}:`, result.MessageId);
+    return { success: true, messageId: result.MessageId };
+  } catch (error) {
+    console.error('❌ Failed to send consolidated threshold alert email via AWS SES:', error);
+    
+    if (error.code === 'MessageRejected') {
+      console.error('   Email address not verified or in sandbox mode');
+    } else if (error.code === 'Throttling') {
+      console.error('   Rate limit exceeded - too many emails sent');
+    }
+    
+    return { success: false, error: error.message, code: error.code };
+  }
+}
+
 module.exports = {
   initEmailService,
-  sendThresholdAlert
+  sendThresholdAlert,
+  sendMultipleThresholdAlerts
 };
 
 

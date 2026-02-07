@@ -1071,7 +1071,7 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
 // ==================== EMAIL NOTIFICATION SERVICE ====================
 
 // Initialize email service (AWS SES)
-const { initEmailService, sendThresholdAlert } = require('./email-service');
+const { initEmailService, sendThresholdAlert, sendMultipleThresholdAlerts } = require('./email-service');
 initEmailService();
 
 // ==================== PUSH NOTIFICATION ENDPOINTS ====================
@@ -1290,37 +1290,57 @@ app.post('/api/push/send', authenticateToken, async (req, res) => {
 
 // ==================== EMAIL NOTIFICATION ENDPOINTS ====================
 
-// Send email notification for threshold alerts
+// Send email notification for threshold alerts (single or multiple)
 app.post('/api/notifications/email', authenticateToken, async (req, res) => {
   try {
-    const { sensorName, value, evaluation } = req.body;
+    const { sensorName, value, evaluation, sensors } = req.body;
     const userEmail = req.user.email;
-
-    if (!sensorName || value === undefined || !evaluation) {
-      return res.status(400).json({ error: 'Missing required fields: sensorName, value, evaluation' });
-    }
 
     if (!userEmail) {
       return res.status(400).json({ error: 'User email not found' });
     }
 
-    const result = await sendThresholdAlert(sensorName, value, evaluation, userEmail);
-    
-    if (result.success) {
-      setCORSHeaders(req, res);
-      res.json({ 
-        success: true, 
-        message: 'Email sent successfully',
-        messageId: result.messageId 
-      });
+    // Check if multiple sensors are provided
+    if (sensors && Array.isArray(sensors) && sensors.length > 0) {
+      // Send consolidated email for multiple sensors
+      const result = await sendMultipleThresholdAlerts(sensors, userEmail);
+      
+      if (result.success) {
+        setCORSHeaders(req, res);
+        res.json({ 
+          success: true, 
+          message: 'Consolidated email sent successfully',
+          messageId: result.messageId 
+        });
+      } else {
+        const statusCode = result.code === 'MessageRejected' ? 400 : 500;
+        setCORSHeaders(req, res);
+        res.status(statusCode).json({ 
+          error: result.error || 'Failed to send email',
+          code: result.code 
+        });
+      }
+    } else if (sensorName && value !== undefined && evaluation) {
+      // Single sensor (backward compatible)
+      const result = await sendThresholdAlert(sensorName, value, evaluation, userEmail);
+      
+      if (result.success) {
+        setCORSHeaders(req, res);
+        res.json({ 
+          success: true, 
+          message: 'Email sent successfully',
+          messageId: result.messageId 
+        });
+      } else {
+        const statusCode = result.code === 'MessageRejected' ? 400 : 500;
+        setCORSHeaders(req, res);
+        res.status(statusCode).json({ 
+          error: result.error || 'Failed to send email',
+          code: result.code 
+        });
+      }
     } else {
-      // Don't return 500 if it's a configuration issue
-      const statusCode = result.code === 'MessageRejected' ? 400 : 500;
-      setCORSHeaders(req, res);
-      res.status(statusCode).json({ 
-        error: result.error || 'Failed to send email',
-        code: result.code 
-      });
+      return res.status(400).json({ error: 'Missing required fields: either (sensorName, value, evaluation) or (sensors array)' });
     }
   } catch (error) {
     console.error('Email notification error:', error);

@@ -231,10 +231,22 @@ function getSensorUnit(sensorName) {
   }
 })();
 
-// Manual trigger function to send email notifications for all critical sensors
+// Manual trigger function to send ONE consolidated email for all critical sensors
 // Bypasses cooldown period - use for testing
 async function manualTriggerEmailAlerts() {
   console.log('📧 Manual Email Trigger: Checking all sensors...');
+  
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    console.error('❌ ERROR: User not logged in! Please log in first.');
+    return { sent: 0, results: [], error: 'Not logged in' };
+  }
+  
+  const emailEnabled = localStorage.getItem('emailNotificationsEnabled') !== 'false';
+  if (!emailEnabled) {
+    console.error('❌ ERROR: Email notifications are disabled! Enable them in Settings.');
+    return { sent: 0, results: [], error: 'Email notifications disabled' };
+  }
   
   // Helper to get current value from DOM
   function getCurrentValue(elementId) {
@@ -259,8 +271,8 @@ async function manualTriggerEmailAlerts() {
     { type: 'potassium', value: getCurrentValue('potassiumValue'), evaluate: (v) => evaluateNPK(v, 'K') }
   ];
   
-  let sentCount = 0;
-  const results = [];
+  // Collect all critical sensors
+  const criticalSensors = [];
   
   for (const sensor of sensors) {
     if (sensor.value === null || sensor.value === undefined) {
@@ -275,29 +287,54 @@ async function manualTriggerEmailAlerts() {
     }
     
     if (evaluation.status === 'danger') {
-      console.log(`🚨 ${sensor.type}: ${sensor.value} - CRITICAL - Sending email...`);
-      
-      try {
-        // Directly call sendEmailNotification (bypasses cooldown)
-        await sendEmailNotification(sensor.type, sensor.value, evaluation);
-        sentCount++;
-        results.push({ sensor: sensor.type, value: sensor.value, status: '✅ Sent' });
-        console.log(`✅ Email sent for ${sensor.type}`);
-      } catch (error) {
-        console.error(`❌ Failed to send email for ${sensor.type}:`, error);
-        results.push({ sensor: sensor.type, value: sensor.value, status: '❌ Error', error: error.message });
-      }
+      console.log(`🚨 ${sensor.type}: ${sensor.value} - CRITICAL`);
+      criticalSensors.push({
+        sensorName: sensor.type,
+        value: sensor.value,
+        evaluation: evaluation
+      });
     } else {
       console.log(`✅ ${sensor.type}: ${sensor.value} - ${evaluation.text}`);
     }
   }
   
-  console.log(`\n📊 Summary: ${sentCount} email(s) sent`);
-  if (results.length > 0) {
-    console.table(results);
+  if (criticalSensors.length === 0) {
+    console.log('✅ No critical sensors found. All sensors are within normal range.');
+    return { sent: 0, results: [], message: 'No critical sensors' };
   }
   
-  return { sent: sentCount, results };
+  console.log(`\n📧 Sending ONE consolidated email for ${criticalSensors.length} critical sensor(s)...`);
+  
+  try {
+    const apiBase = window.getApiBase ? window.getApiBase() : 'https://api.maseed.farm/api';
+    const response = await fetch(`${apiBase}/notifications/email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        sensors: criticalSensors
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`✅ Consolidated email sent! Message ID: ${result.messageId}`);
+      console.log(`📊 Included ${criticalSensors.length} critical sensor(s) in the email:`);
+      criticalSensors.forEach(s => {
+        console.log(`   - ${s.sensorName}: ${s.value}`);
+      });
+      return { sent: 1, results: criticalSensors, messageId: result.messageId };
+    } else {
+      const error = await response.json();
+      console.error(`❌ Failed to send email:`, error);
+      return { sent: 0, results: criticalSensors, error: error.error || error.message };
+    }
+  } catch (error) {
+    console.error(`❌ Error sending email:`, error);
+    return { sent: 0, results: criticalSensors, error: error.message };
+  }
 }
 
 // Export functions
